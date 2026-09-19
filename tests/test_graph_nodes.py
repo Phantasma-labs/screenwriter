@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from src.config import Settings
 from src.graph.nodes.ingest import make_ingest_node
+from src.graph.nodes.researcher import make_researcher_node
 from src.graph.state import new_initial_state
 from src.rag.store import clear_store, get_store
+from src.tools.search import SearchResult
 
 
 class _FakeEmbeddings:
@@ -70,3 +72,23 @@ def test_ingest_node_long_context_indexes_into_rag(tmp_path):
         assert get_store(result["rag_run_id"]) is not None
     finally:
         clear_store(result.get("rag_run_id", ""))
+
+
+def test_researcher_node_disabled_returns_empty_notes():
+    node = make_researcher_node(
+        enabled=False, search_fn=lambda q: [SearchResult(title="x", url="u", snippet="s")]
+    )
+    result = node(_state(topic="anything"))
+    assert result["research_notes"] == ""
+
+
+def test_researcher_node_enabled_formats_results():
+    def fake_search(query: str) -> list[SearchResult]:
+        assert query == "space tourism"
+        return [SearchResult(title="Title", url="http://x", snippet="Snippet text")]
+
+    node = make_researcher_node(enabled=True, search_fn=fake_search)
+    result = node(_state(topic="space tourism"))
+    assert "Title" in result["research_notes"]
+    assert "Snippet text" in result["research_notes"]
+    assert "http://x" in result["research_notes"]
