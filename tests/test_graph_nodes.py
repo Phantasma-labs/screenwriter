@@ -5,6 +5,7 @@ from src.config import Settings
 from src.graph.nodes.ingest import make_ingest_node
 from src.graph.nodes.outliner import make_outliner_node
 from src.graph.nodes.researcher import make_researcher_node
+from src.graph.nodes.writer import make_writer_node
 from src.graph.state import new_initial_state
 from src.rag.store import clear_store, get_store
 from src.tools.search import SearchResult
@@ -120,3 +121,35 @@ def test_outliner_node_passes_retrieved_chunks_into_prompt():
     node(_state(topic="t", rag_run_id="run-1"))
     human_content = str(captured_messages[0][-1].content)
     assert "Retrieved chunk about the detective's past." in human_content
+
+
+def test_writer_node_first_draft_does_not_bump_revision_count():
+    llm = FakeChatModel(responses=["INT. ROOM - DAY\n\nShe waits.\n"])
+    node = make_writer_node(llm=llm, retrieve_fn=lambda run_id, query, k: [])
+    result = node(_state(outline="1. Hook", review_feedback=""))
+    assert result["draft"] == "INT. ROOM - DAY\n\nShe waits.\n"
+    assert "revision_count" not in result
+
+
+def test_writer_node_revision_pass_bumps_revision_count():
+    llm = FakeChatModel(responses=["INT. ROOM - DAY\n\nShe answers.\n"])
+    node = make_writer_node(llm=llm, retrieve_fn=lambda run_id, query, k: [])
+    result = node(
+        _state(outline="1. Hook", review_feedback="Trim the action lines.", revision_count=0)
+    )
+    assert result["revision_count"] == 1
+
+
+def test_writer_node_uses_dual_column_instruction_for_commercial_skill():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=['[{"timecode": "0:00", "visual": "v", "audio": "a"}]'])
+    node = make_writer_node(llm=llm, retrieve_fn=lambda run_id, query, k: [])
+    node(_state(skill="commercial", outline="1. Hook"))
+    human_content = str(captured_messages[0][-1].content)
+    assert "JSON array" in human_content
