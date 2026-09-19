@@ -4,6 +4,7 @@ from __future__ import annotations
 from src.config import Settings
 from src.graph.nodes.character_bible import make_character_bible_node
 from src.graph.nodes.ingest import make_ingest_node
+from src.graph.nodes.location_bible import make_location_bible_node
 from src.graph.nodes.outliner import make_outliner_node
 from src.graph.nodes.researcher import make_researcher_node
 from src.graph.nodes.reviewer import make_reviewer_node
@@ -229,3 +230,24 @@ def test_character_bible_node_includes_prior_feedback_when_revising():
     node(_state(draft="draft text", bible_review_feedback="Add more wardrobe detail."))
     human_content = str(captured_messages[0][-1].content)
     assert "Add more wardrobe detail." in human_content
+
+
+_LOCATION_JSON = (
+    '[{"name": "Office", "description": "A cramped detective office.", '
+    '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}]'
+)
+
+
+def test_location_bible_node_renders_entries_from_valid_json():
+    llm = FakeChatModel(responses=[_LOCATION_JSON])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="INT. OFFICE - DAY\n\nJANE stares at the phone."))
+    assert "Office" in result["location_bible"]
+    assert "Location T2I Prompt" in result["location_bible"]
+
+
+def test_location_bible_node_empty_on_unparseable_response():
+    llm = FakeChatModel(responses=["not json"])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert result["location_bible"] == "# Location Bible\n\nNo locations identified.\n"
