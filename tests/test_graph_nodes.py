@@ -3,10 +3,12 @@ from __future__ import annotations
 
 from src.config import Settings
 from src.graph.nodes.ingest import make_ingest_node
+from src.graph.nodes.outliner import make_outliner_node
 from src.graph.nodes.researcher import make_researcher_node
 from src.graph.state import new_initial_state
 from src.rag.store import clear_store, get_store
 from src.tools.search import SearchResult
+from tests.conftest import FakeChatModel
 
 
 class _FakeEmbeddings:
@@ -92,3 +94,29 @@ def test_researcher_node_enabled_formats_results():
     assert "Title" in result["research_notes"]
     assert "Snippet text" in result["research_notes"]
     assert "http://x" in result["research_notes"]
+
+
+def test_outliner_node_returns_llm_output_as_outline():
+    llm = FakeChatModel(responses=["1. Hook\n2. Climax\n3. Resolution"])
+    node = make_outliner_node(llm=llm, retrieve_fn=lambda run_id, query, k: [])
+    result = node(_state(topic="A retired detective solves crimes via voicemail"))
+    assert result["outline"] == "1. Hook\n2. Climax\n3. Resolution"
+    assert result["status"] == "outlined"
+
+
+def test_outliner_node_passes_retrieved_chunks_into_prompt():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=["outline text"])
+    node = make_outliner_node(
+        llm=llm,
+        retrieve_fn=lambda run_id, query, k: ["Retrieved chunk about the detective's past."],
+    )
+    node(_state(topic="t", rag_run_id="run-1"))
+    human_content = str(captured_messages[0][-1].content)
+    assert "Retrieved chunk about the detective's past." in human_content
