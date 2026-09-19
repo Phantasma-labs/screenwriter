@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from src.config import Settings
+from src.graph.nodes.character_bible import make_character_bible_node
 from src.graph.nodes.ingest import make_ingest_node
 from src.graph.nodes.outliner import make_outliner_node
 from src.graph.nodes.researcher import make_researcher_node
@@ -189,3 +190,42 @@ def test_reviewer_node_falls_back_gracefully_on_unparseable_response():
     result = node(_state(draft="draft text"))
     assert result["review_score"] == 0.0
     assert "could not be parsed" in result["review_feedback"]
+
+
+_CHARACTER_JSON = (
+    '[{"name": "Jane", "role": "Protagonist", "appearance": "Sharp business attire.", '
+    '"personality": "Relentless.", "voice": "Clipped.", "backstory": "Ex-detective.", '
+    '"headshot_prompt": "Create a headshot of Jane.", '
+    '"contact_sheet_prompt": "Create a contact sheet of Jane.", '
+    '"wardrobe_prompt": "Create a wardrobe shot of Jane."}]'
+)
+
+
+def test_character_bible_node_renders_entries_from_valid_json():
+    llm = FakeChatModel(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    result = node(_state(draft="INT. OFFICE - DAY\n\nJANE stares at the phone."))
+    assert "Jane" in result["character_bible"]
+    assert "Headshot Prompt" in result["character_bible"]
+
+
+def test_character_bible_node_empty_on_unparseable_response():
+    llm = FakeChatModel(responses=["not json"])
+    node = make_character_bible_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert result["character_bible"] == "# Character Bible\n\nNo principal characters identified.\n"
+
+
+def test_character_bible_node_includes_prior_feedback_when_revising():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    node(_state(draft="draft text", bible_review_feedback="Add more wardrobe detail."))
+    human_content = str(captured_messages[0][-1].content)
+    assert "Add more wardrobe detail." in human_content
