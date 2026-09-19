@@ -4,6 +4,7 @@ from __future__ import annotations
 from src.config import Settings
 from src.graph.nodes.bible_reviewer import make_bible_reviewer_node
 from src.graph.nodes.character_bible import make_character_bible_node
+from src.graph.nodes.finalize import make_finalize_node
 from src.graph.nodes.ingest import make_ingest_node
 from src.graph.nodes.location_bible import make_location_bible_node
 from src.graph.nodes.outliner import make_outliner_node
@@ -281,3 +282,23 @@ def test_bible_reviewer_node_falls_back_gracefully_on_unparseable_response():
     )
     assert result["bible_review_score"] == 0.0
     assert result["bible_revision_count"] == 1
+
+
+def test_finalize_node_short_film_produces_fountain_and_markdown():
+    llm = FakeChatModel(responses=["Create a moody poster of a detective by a window."])
+    node = make_finalize_node(llm=llm)
+    result = node(_state(skill="short_film", draft="int. room - day\n\nShe waits.\n"))
+    assert result["status"] == "finalized"
+    assert result["fountain_script"].splitlines()[0] == "INT. ROOM - DAY"
+    assert "Key Art T2I Prompt" in result["screenplay_markdown"]
+    assert "She waits." in result["screenplay_markdown"]
+
+
+def test_finalize_node_dual_column_skill_produces_table_and_narrator_fountain():
+    draft = '[{"timecode": "0:00", "visual": "Logo reveal", "audio": "Sting plays"}]'
+    llm = FakeChatModel(responses=["Create a minimalist poster with a bold logo."])
+    node = make_finalize_node(llm=llm)
+    result = node(_state(skill="commercial", draft=draft))
+    assert "| 0:00 | Logo reveal | Sting plays |" in result["screenplay_markdown"]
+    assert "NARRATOR" in result["fountain_script"]
+    assert "Sting plays" in result["fountain_script"]
