@@ -1,6 +1,14 @@
 # tests/test_formatters.py
 from __future__ import annotations
 
+from src.formatters.bible import (
+    CharacterBibleEntry,
+    LocationBibleEntry,
+    parse_character_entries,
+    parse_location_entries,
+    render_character_bible,
+    render_location_bible,
+)
 from src.formatters.dual_column import (
     TABLE_HEADER,
     AVBeat,
@@ -78,3 +86,71 @@ def test_render_dual_column_as_fountain_produces_narrator_cues():
     assert "Logo reveal on black." in result
     assert "NARRATOR" in result
     assert "Upbeat sting plays." in result
+
+
+def _character() -> CharacterBibleEntry:
+    return CharacterBibleEntry(
+        name="Jane Voss",
+        role="Protagonist",
+        appearance="Sharp business attire, tired eyes, close-cropped dark hair.",
+        personality="Relentless, dryly funny under pressure.",
+        voice="Clipped, impatient, precise.",
+        backstory="Former detective turned voicemail-service owner.",
+        headshot_prompt="Create a headshot of Jane Voss, a woman with tired eyes.",
+        contact_sheet_prompt="Create a 3x2 contact sheet of Jane Voss in six expressions.",
+        wardrobe_prompt="Create a full-body wardrobe shot of Jane Voss in sharp business attire.",
+    )
+
+
+def _location() -> LocationBibleEntry:
+    return LocationBibleEntry(
+        name="Voss Voicemail Office",
+        description="A cramped, fluorescent-lit office stacked with old answering machines.",
+        mood="Tense and claustrophobic.",
+        t2i_prompt="Create a wide shot of a cramped, fluorescent-lit detective office at night.",
+    )
+
+
+def test_parse_character_entries_valid_json():
+    raw = f"[{_character().model_dump_json()}]"
+    entries = parse_character_entries(raw)
+    assert len(entries) == 1
+    assert entries[0].name == "Jane Voss"
+
+
+def test_parse_character_entries_invalid_returns_empty():
+    assert parse_character_entries("not json") == []
+
+
+def test_render_character_bible_empty_list():
+    expected = "# Character Bible\n\nNo principal characters identified.\n"
+    assert render_character_bible([]) == expected
+
+
+def test_render_character_bible_includes_t2i_boxes():
+    rendered = render_character_bible([_character()])
+    assert "Jane Voss" in rendered
+    assert "**Headshot Prompt:**" in rendered
+    assert "```text" in rendered
+    assert "Create a headshot of Jane Voss" in rendered
+    assert "**Contact Sheet Prompt:**" in rendered
+    assert "**Wardrobe & Accessories Prompt:**" in rendered
+
+
+def test_parse_location_entries_valid_json():
+    raw = f"[{_location().model_dump_json()}]"
+    entries = parse_location_entries(raw)
+    assert len(entries) == 1
+    assert entries[0].name == "Voss Voicemail Office"
+
+
+def test_render_location_bible_empty_list():
+    assert render_location_bible([]) == "# Location Bible\n\nNo locations identified.\n"
+
+
+def test_render_location_bible_includes_t2i_box():
+    rendered = render_location_bible([_location()])
+    assert "Voss Voicemail Office" in rendered
+    assert "**Location T2I Prompt:**" in rendered
+    assert "```text" in rendered
+    assert "cramped, fluorescent-lit detective office" in rendered
