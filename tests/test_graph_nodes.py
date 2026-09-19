@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from src.config import Settings
+from src.graph.nodes.bible_reviewer import make_bible_reviewer_node
 from src.graph.nodes.character_bible import make_character_bible_node
 from src.graph.nodes.ingest import make_ingest_node
 from src.graph.nodes.location_bible import make_location_bible_node
@@ -251,3 +252,32 @@ def test_location_bible_node_empty_on_unparseable_response():
     node = make_location_bible_node(llm=llm)
     result = node(_state(draft="draft text"))
     assert result["location_bible"] == "# Location Bible\n\nNo locations identified.\n"
+
+
+def test_bible_reviewer_node_parses_valid_json_and_bumps_revision_count():
+    llm = FakeChatModel(
+        responses=[
+            '{"score": 9.0, "passed": true, "critique": "Consistent.", "actionable_revisions": []}'
+        ]
+    )
+    node = make_bible_reviewer_node(llm=llm)
+    result = node(
+        _state(
+            draft="draft text",
+            character_bible="# Character Bible\n",
+            location_bible="# Location Bible\n",
+            bible_revision_count=0,
+        )
+    )
+    assert result["bible_review_score"] == 9.0
+    assert result["bible_revision_count"] == 1
+
+
+def test_bible_reviewer_node_falls_back_gracefully_on_unparseable_response():
+    llm = FakeChatModel(responses=["not json"])
+    node = make_bible_reviewer_node(llm=llm)
+    result = node(
+        _state(draft="draft text", character_bible="", location_bible="", bible_revision_count=0)
+    )
+    assert result["bible_review_score"] == 0.0
+    assert result["bible_revision_count"] == 1
