@@ -1,0 +1,15 @@
+[project]
+name = "screenwriter"
+version = "0.1.0"
+description = "LangGraph-orchestrated screenplay writer/reviewer with ephemeral RAG context and Nano Banana Pro T2I production bibles."
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
