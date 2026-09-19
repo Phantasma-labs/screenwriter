@@ -5,6 +5,7 @@ from src.config import Settings
 from src.graph.nodes.ingest import make_ingest_node
 from src.graph.nodes.outliner import make_outliner_node
 from src.graph.nodes.researcher import make_researcher_node
+from src.graph.nodes.reviewer import make_reviewer_node
 from src.graph.nodes.writer import make_writer_node
 from src.graph.state import new_initial_state
 from src.rag.store import clear_store, get_store
@@ -153,3 +154,38 @@ def test_writer_node_uses_dual_column_instruction_for_commercial_skill():
     node(_state(skill="commercial", outline="1. Hook"))
     human_content = str(captured_messages[0][-1].content)
     assert "JSON array" in human_content
+
+
+def test_reviewer_node_parses_valid_json():
+    llm = FakeChatModel(
+        responses=[
+            '{"score": 9.2, "passed": true, "critique": "Strong draft.", '
+            '"actionable_revisions": []}'
+        ]
+    )
+    node = make_reviewer_node(llm=llm)
+    result = node(_state(draft="INT. ROOM - DAY\n\nShe waits."))
+    assert result["review_score"] == 9.2
+    assert "Strong draft." in result["review_feedback"]
+
+
+def test_reviewer_node_includes_actionable_revisions_in_feedback():
+    llm = FakeChatModel(
+        responses=[
+            '{"score": 5.0, "passed": false, "critique": "Needs work.", '
+            '"actionable_revisions": ["Trim action lines", "Fix slugline case"]}'
+        ]
+    )
+    node = make_reviewer_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert result["review_score"] == 5.0
+    assert "Trim action lines" in result["review_feedback"]
+    assert "Fix slugline case" in result["review_feedback"]
+
+
+def test_reviewer_node_falls_back_gracefully_on_unparseable_response():
+    llm = FakeChatModel(responses=["I refuse to output JSON today."])
+    node = make_reviewer_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert result["review_score"] == 0.0
+    assert "could not be parsed" in result["review_feedback"]
