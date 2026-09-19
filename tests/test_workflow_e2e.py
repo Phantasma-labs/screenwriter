@@ -100,3 +100,61 @@ def test_workflow_interview_pauses_for_human_input_then_resumes():
     assert resumed["interview_transcript"] == [
         {"question": "What tone should this have?", "answer": "Melancholy and quiet."}
     ]
+
+
+def test_workflow_bible_revise_loop_runs_twice_then_finalizes():
+    character_json_pass_1 = (
+        '[{"name": "Jane", "role": "Protagonist", "appearance": "Sharp business attire.", '
+        '"personality": "Relentless.", "voice": "Clipped.", "backstory": "Ex-detective.", '
+        '"headshot_prompt": "Create a headshot of Jane.", '
+        '"contact_sheet_prompt": "Create a contact sheet of Jane.", '
+        '"wardrobe_prompt": "Create a wardrobe shot of Jane."}]'
+    )
+    character_json_pass_2 = (
+        '[{"name": "Jane", "role": "Protagonist", "appearance": "Sharp business attire.", '
+        '"personality": "Relentless.", "voice": "Clipped.", '
+        '"backstory": "Ex-detective, revised with more concrete detail.", '
+        '"headshot_prompt": "Create a headshot of Jane.", '
+        '"contact_sheet_prompt": "Create a contact sheet of Jane.", '
+        '"wardrobe_prompt": "Create a wardrobe shot of Jane."}]'
+    )
+    location_json_pass_1 = (
+        '[{"name": "Office", "description": "A cramped detective office.", '
+        '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}]'
+    )
+    location_json_pass_2 = (
+        '[{"name": "Office", "description": "A cramped detective office, revised.", '
+        '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}]'
+    )
+    responses = [
+        "1. Hook\n2. Climax",
+        "INT. ROOM - DAY\n\nA phone rings.\n",
+        '{"score": 9.0, "passed": true, "critique": "Good.", "actionable_revisions": []}',
+        character_json_pass_1,
+        location_json_pass_1,
+        '{"score": 3.0, "passed": false, "critique": "Needs more concrete detail.", '
+        '"actionable_revisions": ["Add more backstory detail."]}',
+        character_json_pass_2,
+        location_json_pass_2,
+        '{"score": 9.0, "passed": true, "critique": "Consistent now.", "actionable_revisions": []}',
+        "Create a moody cinematic poster of a detective silhouetted against office blinds.",
+    ]
+    llm = FakeChatModel(responses=responses)
+    app = build_workflow(enable_search=False, llm=llm, search_fn=lambda q: [])
+
+    initial_state = new_initial_state(
+        topic="A retired detective solves crimes via voicemail",
+        skill="short_film",
+        file_paths=[],
+        max_revisions=2,
+        max_bible_revisions=2,
+        autonomous=True,
+    )
+    config = {"configurable": {"thread_id": "test-thread-bible-revise"}}
+    result = app.invoke(initial_state, config)
+
+    assert "__interrupt__" not in result
+    assert result["status"] == "finalized"
+    assert result["bible_revision_count"] == 1
+    assert "revised with more concrete detail" in result["character_bible"]
+    assert "revised" in result["location_bible"]

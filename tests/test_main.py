@@ -136,6 +136,26 @@ def test_run_interactive_handles_one_interrupt_then_completes(monkeypatch, capsy
     assert "What tone?" in capsys.readouterr().out
 
 
+def test_run_interactive_skips_empty_interrupt_payload(capsys):
+    batches = [
+        [
+            {"ingest": {}},
+            {"__interrupt__": ()},
+            {"outliner": {}},
+            {"writer": {}},
+            {"reviewer": {}},
+            {"finalize": {}},
+        ]
+    ]
+    app = _FakeApp(batches, final_values={"status": "finalized"})
+
+    result = run_interactive(
+        app, initial_state={"topic": "t"}, config={"configurable": {"thread_id": "x"}}
+    )
+
+    assert result == {"status": "finalized"}
+
+
 def test_run_interactive_completes_immediately_when_no_interrupt(capsys):
     batches = [
         [{"ingest": {}}, {"outliner": {}}, {"writer": {}}, {"reviewer": {}}, {"finalize": {}}]

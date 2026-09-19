@@ -28,7 +28,13 @@ def make_ingest_node(
             return {"parsed_context": "", "rag_indexed": False, "status": "ingested"}
 
         parsed = parse_context_files(state["file_paths"])
-        update: NodeUpdate = {"parsed_context": parsed.combined_text, "status": "ingested"}
+        context_text = parsed.combined_text
+        if parsed.warnings:
+            warning_block = (
+                "[INGEST WARNINGS]\n" + "\n".join(f"- {w}" for w in parsed.warnings) + "\n\n"
+            )
+            context_text = warning_block + context_text
+        update: NodeUpdate = {"parsed_context": context_text, "status": "ingested"}
 
         if len(parsed.combined_text) < settings.rag_min_chars_to_index:
             update["rag_indexed"] = False

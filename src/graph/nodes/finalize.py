@@ -8,7 +8,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.config import get_llm
 from src.formatters.dual_column import parse_av_beats, render_dual_column_table
-from src.formatters.fountain import render_dual_column_as_fountain, render_fountain
+from src.formatters.fountain import (
+    render_dual_column_as_fountain,
+    render_fountain,
+    validate_fountain,
+)
 from src.graph.state import NodeUpdate, ScreenplayState
 from src.skills import get_skill
 from src.skills.base import T2I_PROMPT_GUIDELINES, OutputFormat
@@ -37,11 +41,24 @@ def make_finalize_node(llm: BaseChatModel | None = None) -> Callable[[Screenplay
             body = state["draft"]
         else:
             beats = parse_av_beats(state["draft"])
-            fountain_script = render_dual_column_as_fountain(beats)
-            body = render_dual_column_table(beats)
+            if not beats:
+                fountain_script = render_fountain(state["draft"])
+                body = (
+                    "**Note:** Could not parse the draft as structured A/V beats; "
+                    "showing the raw draft below.\n\n" + state["draft"]
+                )
+            else:
+                fountain_script = render_dual_column_as_fountain(beats)
+                body = render_dual_column_table(beats)
 
+        format_warnings = validate_fountain(fountain_script)
+        warnings_section = (
+            "\n## Formatting Warnings\n" + "\n".join(f"- {w}" for w in format_warnings) + "\n"
+            if format_warnings
+            else ""
+        )
         key_art_box = f"**Key Art T2I Prompt:**\n```text\n{key_art_prompt}\n```\n"
-        screenplay_markdown = f"{key_art_box}\n# Screenplay\n\n{body}"
+        screenplay_markdown = f"{key_art_box}\n# Screenplay\n\n{body}{warnings_section}"
 
         return {
             "fountain_script": fountain_script,

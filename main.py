@@ -106,7 +106,10 @@ def run_interactive(app: Any, initial_state: Any, config: dict[str, Any]) -> Scr
         interrupted = False
         for chunk in app.stream(current_input, config, stream_mode="updates"):
             if "__interrupt__" in chunk:
-                question = chunk["__interrupt__"][0].value
+                interrupt_payload = chunk["__interrupt__"]
+                if not interrupt_payload:
+                    continue
+                question = interrupt_payload[0].value
                 print(f"[INTERVIEWING] {question}")
                 answer = input("> ")
                 current_input = Command(
@@ -123,7 +126,7 @@ def run_interactive(app: Any, initial_state: Any, config: dict[str, Any]) -> Scr
 
 def run(argv: list[str] | None = None) -> ScreenplayState:
     args = parse_args(argv)
-    load_settings()  # fail fast on invalid numeric env overrides
+    settings = load_settings()  # fail fast on invalid numeric env overrides
     app = build_workflow(enable_search=args.enable_search)
 
     initial_state = new_initial_state(
@@ -131,7 +134,7 @@ def run(argv: list[str] | None = None) -> ScreenplayState:
         skill=args.skill,
         file_paths=args.files,
         max_revisions=args.max_revisions,
-        max_bible_revisions=1,
+        max_bible_revisions=settings.max_bible_revisions,
         autonomous=args.autonomous,
     )
     config = {"configurable": {"thread_id": f"cli-{id(args)}"}}

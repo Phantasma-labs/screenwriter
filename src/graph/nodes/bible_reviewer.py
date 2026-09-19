@@ -48,7 +48,6 @@ def make_bible_reviewer_node(
         return {
             "bible_review_score": feedback.score,
             "bible_review_feedback": format_critique(feedback),
-            "bible_revision_count": state["bible_revision_count"] + 1,
         }
 
     return bible_reviewer_node

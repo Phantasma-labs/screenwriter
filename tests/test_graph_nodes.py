@@ -67,6 +67,14 @@ def test_ingest_node_short_context_skips_rag(tmp_path):
     assert "Short note." in result["parsed_context"]
 
 
+def test_ingest_node_surfaces_parser_warnings_in_parsed_context(tmp_path):
+    missing_file = str(tmp_path / "does_not_exist.md")
+    node = make_ingest_node(settings=_settings())
+    result = node(_state(file_paths=[missing_file]))
+    assert "[INGEST WARNINGS]" in result["parsed_context"]
+    assert "Could not read" in result["parsed_context"]
+
+
 def test_ingest_node_long_context_indexes_into_rag(tmp_path):
     md_file = tmp_path / "long.md"
     md_file.write_text("word " * 50, encoding="utf-8")
@@ -234,6 +242,26 @@ def test_character_bible_node_includes_prior_feedback_when_revising():
     assert "Add more wardrobe detail." in human_content
 
 
+def test_character_bible_node_first_pass_does_not_bump_revision_count():
+    llm = FakeChatModel(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    result = node(_state(draft="draft text", bible_review_feedback=""))
+    assert "bible_revision_count" not in result
+
+
+def test_character_bible_node_revision_pass_bumps_revision_count():
+    llm = FakeChatModel(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    result = node(
+        _state(
+            draft="draft text",
+            bible_review_feedback="Add more wardrobe detail.",
+            bible_revision_count=0,
+        )
+    )
+    assert result["bible_revision_count"] == 1
+
+
 _LOCATION_JSON = (
     '[{"name": "Office", "description": "A cramped detective office.", '
     '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}]'
@@ -255,7 +283,7 @@ def test_location_bible_node_empty_on_unparseable_response():
     assert result["location_bible"] == "# Location Bible\n\nNo locations identified.\n"
 
 
-def test_bible_reviewer_node_parses_valid_json_and_bumps_revision_count():
+def test_bible_reviewer_node_parses_valid_json_and_does_not_touch_revision_count():
     llm = FakeChatModel(
         responses=[
             '{"score": 9.0, "passed": true, "critique": "Consistent.", "actionable_revisions": []}'
@@ -271,7 +299,7 @@ def test_bible_reviewer_node_parses_valid_json_and_bumps_revision_count():
         )
     )
     assert result["bible_review_score"] == 9.0
-    assert result["bible_revision_count"] == 1
+    assert "bible_revision_count" not in result
 
 
 def test_bible_reviewer_node_falls_back_gracefully_on_unparseable_response():
@@ -281,7 +309,7 @@ def test_bible_reviewer_node_falls_back_gracefully_on_unparseable_response():
         _state(draft="draft text", character_bible="", location_bible="", bible_revision_count=0)
     )
     assert result["bible_review_score"] == 0.0
-    assert result["bible_revision_count"] == 1
+    assert "bible_revision_count" not in result
 
 
 def test_finalize_node_short_film_produces_fountain_and_markdown():
@@ -292,6 +320,7 @@ def test_finalize_node_short_film_produces_fountain_and_markdown():
     assert result["fountain_script"].splitlines()[0] == "INT. ROOM - DAY"
     assert "Key Art T2I Prompt" in result["screenplay_markdown"]
     assert "She waits." in result["screenplay_markdown"]
+    assert "## Formatting Warnings" not in result["screenplay_markdown"]
 
 
 def test_finalize_node_dual_column_skill_produces_table_and_narrator_fountain():
@@ -302,3 +331,23 @@ def test_finalize_node_dual_column_skill_produces_table_and_narrator_fountain():
     assert "| 0:00 | Logo reveal | Sting plays |" in result["screenplay_markdown"]
     assert "NARRATOR" in result["fountain_script"]
     assert "Sting plays" in result["fountain_script"]
+    assert "## Formatting Warnings" not in result["screenplay_markdown"]
+
+
+def test_finalize_node_dual_column_falls_back_to_raw_draft_on_unparseable_json():
+    draft = "not valid json"
+    llm = FakeChatModel(responses=["Create a minimalist poster with a bold logo."])
+    node = make_finalize_node(llm=llm)
+    result = node(_state(skill="commercial", draft=draft))
+    assert "Could not parse the draft as structured A/V beats" in result["screenplay_markdown"]
+    assert "not valid json" in result["screenplay_markdown"]
+    assert result["fountain_script"] != ""
+
+
+def test_finalize_node_flags_long_action_block_in_formatting_warnings():
+    draft = "INT. KITCHEN - DAY\n\nOne.\nTwo.\nThree.\nFour.\nFive.\n"
+    llm = FakeChatModel(responses=["Create a poster of a kitchen at dawn."])
+    node = make_finalize_node(llm=llm)
+    result = node(_state(skill="short_film", draft=draft))
+    assert "## Formatting Warnings" in result["screenplay_markdown"]
+    assert "Action block has 5 lines (max 4)" in result["screenplay_markdown"]

@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from src.config import Settings, load_settings
 from src.graph.edges import (
     route_after_bible_reviewer,
     route_after_interview_ask,
@@ -33,15 +34,17 @@ def build_workflow(
     llm: BaseChatModel | None = None,
     embeddings: EmbeddingsFn | None = None,
     search_fn: Callable[[str], list[SearchResult]] = search,
+    settings: Settings | None = None,
 ) -> CompiledStateGraph:
+    settings = settings or load_settings()
     graph = StateGraph(ScreenplayState)
 
     graph.add_node("ingest", make_ingest_node(embeddings=embeddings))
     graph.add_node("interview_ask", make_interview_ask_node(llm=llm))
     graph.add_node("interview_wait", interview_wait_node)
     graph.add_node("researcher", make_researcher_node(enabled=enable_search, search_fn=search_fn))
-    graph.add_node("outliner", make_outliner_node(llm=llm))
-    graph.add_node("writer", make_writer_node(llm=llm))
+    graph.add_node("outliner", make_outliner_node(llm=llm, rag_top_k=settings.rag_top_k))
+    graph.add_node("writer", make_writer_node(llm=llm, rag_top_k=settings.rag_top_k))
     graph.add_node("reviewer", make_reviewer_node(llm=llm))
     graph.add_node("character_bible", make_character_bible_node(llm=llm))
     graph.add_node("location_bible", make_location_bible_node(llm=llm))

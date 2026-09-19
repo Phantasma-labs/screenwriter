@@ -30,9 +30,10 @@ def make_character_bible_node(
     llm = llm or get_llm(temperature=0.6)
 
     def character_bible_node(state: ScreenplayState) -> NodeUpdate:
+        is_revision = bool(state["bible_review_feedback"])
         feedback_note = (
             f"\n\nAddress this reviewer feedback:\n{state['bible_review_feedback']}"
-            if state["bible_review_feedback"]
+            if is_revision
             else ""
         )
         messages = [
@@ -46,6 +47,9 @@ def make_character_bible_node(
         ]
         response = llm.invoke(messages)
         entries = parse_character_entries(str(response.content))
-        return {"character_bible": render_character_bible(entries)}
+        update: NodeUpdate = {"character_bible": render_character_bible(entries)}
+        if is_revision:
+            update["bible_revision_count"] = state["bible_revision_count"] + 1
+        return update
 
     return character_bible_node
