@@ -1,7 +1,9 @@
 # tests/test_skills.py
 from __future__ import annotations
 
-from src.skills import get_skill
+import pytest
+
+from src.skills import UnknownSkillError, available_skills, get_skill
 from src.skills.base import MASTER_SCENE_RULES, T2I_PROMPT_GUIDELINES, OutputFormat, SkillProfile
 
 
@@ -39,3 +41,39 @@ def test_short_film_outline_prompt_includes_every_beat():
     prompt = skill.outline_prompt()
     for beat in skill.outline_template:
         assert beat in prompt
+
+
+# --- append to tests/test_skills.py ---
+ALL_SKILLS = [
+    "short_film",
+    "documentary",
+    "commercial",
+    "product_shot",
+    "learning_dev",
+    "infomedia",
+]
+
+
+def test_available_skills_lists_all_six():
+    assert available_skills() == sorted(ALL_SKILLS)
+
+
+@pytest.mark.parametrize("name", ALL_SKILLS)
+def test_get_skill_returns_complete_profile(name):
+    skill = get_skill(name)
+    assert skill.name == name
+    assert skill.persona
+    assert len(skill.outline_template) >= 4
+    assert len(skill.review_criteria) >= 3
+
+
+@pytest.mark.parametrize(
+    "name", ["documentary", "commercial", "product_shot", "learning_dev", "infomedia"]
+)
+def test_production_skills_are_dual_column(name):
+    assert get_skill(name).output_format == OutputFormat.DUAL_COLUMN
+
+
+def test_get_skill_unknown_raises():
+    with pytest.raises(UnknownSkillError):
+        get_skill("not_a_real_skill")
