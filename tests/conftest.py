@@ -16,6 +16,7 @@ def _default_ollama_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OLLAMA_MODEL_NAME", "deepseek-v4.1-flash:cloud")
     monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.com")
     monkeypatch.setenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+    monkeypatch.setenv("OLLAMA_EMBED_BASE_URL", "http://localhost:11434")
 
 
 class FakeChatModel(BaseChatModel):

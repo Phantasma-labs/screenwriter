@@ -12,9 +12,9 @@ def make_researcher_node(
 ) -> Callable[[ScreenplayState], NodeUpdate]:
     def researcher_node(state: ScreenplayState) -> NodeUpdate:
         if not enabled:
-            return {"research_notes": "", "status": "researched"}
+            return {"research_notes": "", "search_results": [], "status": "researched"}
         results = search_fn(state["topic"])
         notes = "\n".join(f"- {r['title']}: {r['snippet']} ({r['url']})" for r in results)
-        return {"research_notes": notes, "status": "researched"}
+        return {"research_notes": notes, "search_results": results, "status": "researched"}
 
     return researcher_node

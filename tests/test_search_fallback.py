@@ -11,6 +11,7 @@ def _settings(tavily_api_key: str | None = None) -> Settings:
         ollama_base_url="https://ollama.com",
         ollama_api_key="k",
         ollama_embed_model="e",
+        ollama_embed_base_url="http://localhost:11434",
         tavily_api_key=tavily_api_key,
         rag_chunk_size=1000,
         rag_chunk_overlap=150,

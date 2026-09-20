@@ -14,6 +14,9 @@ def test_full_workflow_autonomous_short_film_produces_all_artifacts():
         "1. Hook\n2. Inciting incident\n3. Climax\n4. Resolution",
         "INT. OFFICE - DAY\n\nJANE stares at the phone.\n\nJANE\nPick up.\n",
         '{"score": 9.0, "passed": true, "critique": "Solid draft.", "actionable_revisions": []}',
+        '{"story_description": "A retired detective solves crimes via voicemail.", '
+        '"duration_estimate": "8-10 minutes", "frame_format": "Digital Cinema, 4K", '
+        '"aspect_ratio": "2.39:1", "camera": "ARRI Alexa Mini", "lenses": "35mm prime"}',
         '[{"name": "Jane", "role": "Protagonist", '
         '"appearance": "Sharp business attire, tired eyes.", '
         '"personality": "Relentless.", "voice": "Clipped, impatient.", '
@@ -60,6 +63,9 @@ def test_full_workflow_autonomous_short_film_produces_all_artifacts():
     assert "Headshot Prompt" in result["character_bible"]
     assert "# Location Bible" in result["location_bible"]
     assert "Office" in result["location_bible"]
+    assert "# Overview" in result["overview"]
+    assert "A retired detective solves crimes via voicemail." in result["overview"]
+    assert "2.39:1" in result["overview"]
 
 
 def test_workflow_interview_pauses_for_human_input_then_resumes():
@@ -69,6 +75,9 @@ def test_workflow_interview_pauses_for_human_input_then_resumes():
         "1. Hook\n2. Climax",
         "INT. ROOM - DAY\n\nA phone rings.\n",
         '{"score": 9.0, "passed": true, "critique": "Good.", "actionable_revisions": []}',
+        '{"story_description": "A phone rings once a year.", "duration_estimate": "5 minutes", '
+        '"frame_format": "Digital, 2K", "aspect_ratio": "16:9", "camera": "Sony FX3", '
+        '"lenses": "24-70mm zoom"}',
         "[]",
         "[]",
         '{"score": 9.0, "passed": true, "critique": "Fine.", "actionable_revisions": []}',
@@ -130,6 +139,9 @@ def test_workflow_bible_revise_loop_runs_twice_then_finalizes():
         "1. Hook\n2. Climax",
         "INT. ROOM - DAY\n\nA phone rings.\n",
         '{"score": 9.0, "passed": true, "critique": "Good.", "actionable_revisions": []}',
+        '{"story_description": "A retired detective solves crimes via voicemail.", '
+        '"duration_estimate": "8-10 minutes", "frame_format": "Digital Cinema, 4K", '
+        '"aspect_ratio": "2.39:1", "camera": "ARRI Alexa Mini", "lenses": "35mm prime"}',
         character_json_pass_1,
         location_json_pass_1,
         '{"score": 3.0, "passed": false, "critique": "Needs more concrete detail.", '

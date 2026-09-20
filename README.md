@@ -15,11 +15,22 @@ cp .env.example .env
 # edit .env: set OLLAMA_API_KEY to your Ollama cloud API key
 ```
 
-`OLLAMA_API_KEY` is required - this project calls Ollama's cloud API
-(`https://ollama.com`) exclusively; no local Ollama daemon is used. Get a key
-from your Ollama account, then `pip install`'s `nomic-embed-text` embedding
-model and the configured chat model (default `deepseek-v4.1-flash:cloud`)
-must both be available to that key.
+`OLLAMA_API_KEY` is required for chat/generation - this project calls Ollama's
+cloud API (`https://ollama.com`) for the configured chat model (default
+`deepseek-v4.1-flash:cloud`). Get a key from your Ollama account and make sure
+that model is available to it.
+
+Embeddings (used only for RAG indexing of uploaded `--files` context once it
+exceeds `RAG_MIN_CHARS_TO_INDEX`) use a **local** Ollama daemon instead of the
+cloud API - no API key needed, and it sidesteps cloud accounts that lack
+`/api/embed` access. This is optional: install [Ollama](https://ollama.com/download)
+locally, run `ollama pull nomic-embed-text`, and make sure the daemon is
+running (`ollama serve`, or the desktop app) before a run with large file
+context. If the local daemon isn't reachable, RAG indexing fails gracefully
+and context is passed directly to the LLM instead, so this is a nice-to-have
+for large-context runs, not a hard requirement. Override the daemon URL with
+`OLLAMA_EMBED_BASE_URL` in `.env` if it isn't at the default
+`http://localhost:11434`.
 
 `TAVILY_API_KEY` is optional - without it, `--enable-search` falls back to
 keyless DuckDuckGo search automatically.

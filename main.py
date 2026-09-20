@@ -11,6 +11,7 @@ from langgraph.types import Command
 from src.config import load_settings
 from src.graph.state import ScreenplayState, new_initial_state
 from src.graph.workflow import build_workflow
+from src.output_files import build_output_files
 
 SUPPORTED_CONTEXT_EXTENSIONS = {".md", ".txt", ".pdf"}
 
@@ -22,6 +23,7 @@ STATUS_BADGES = {
     "outliner": "[OUTLINING]",
     "writer": "[WRITING DRAFT]",
     "reviewer": "[REVIEWING]",
+    "overview": "[BUILDING OVERVIEW]",
     "character_bible": "[BUILDING CHARACTER BIBLE]",
     "location_bible": "[BUILDING LOCATION BIBLE]",
     "bible_reviewer": "[REVIEWING BIBLES]",
@@ -49,7 +51,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--files", "-f", nargs="*", default=[], help="Context files (.md, .txt, .pdf)"
     )
     parser.add_argument("--max-revisions", "-r", type=int, default=2)
-    parser.add_argument("--output", "-o", default=None, help="Output file stem (no extension)")
+    parser.add_argument(
+        "--output", "-o", default=None, help="Output directory for the four generated files"
+    )
     parser.add_argument("--enable-search", action="store_true")
     parser.add_argument("--autonomous", action="store_true", help="Skip the interview entirely")
     args = parser.parse_args(argv)
@@ -68,31 +72,28 @@ def is_finish_command(text: str) -> bool:
     return text.strip().lower() in {"/finish", "/auto", "/autonomous"}
 
 
-def resolve_output_stem(output: str | None) -> Path | None:
+def resolve_output_dir(output: str | None) -> Path | None:
     if output is None:
         return None
-    path = Path(output)
-    return path.with_suffix("") if path.suffix else path
+    return Path(output)
 
 
-def write_outputs(stem: Path, result: ScreenplayState) -> list[Path]:
-    targets = {
-        stem.with_suffix(".fountain"): result["fountain_script"],
-        stem.with_suffix(".md"): result["screenplay_markdown"],
-        Path(f"{stem}.characters.md"): result["character_bible"],
-        Path(f"{stem}.locations.md"): result["location_bible"],
-    }
+def write_outputs(output_dir: Path, result: ScreenplayState) -> list[Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
-    for path, content in targets.items():
+    for name, content in build_output_files(result).items():
+        path = output_dir / name
         path.write_text(content, encoding="utf-8")
         written.append(path)
     return written
 
 
 def print_outputs(result: ScreenplayState) -> None:
+    print("\n" + "=" * 20 + " OVERVIEW " + "=" * 20)
+    print(result["overview"])
     print("\n" + "=" * 20 + " SCREENPLAY (Markdown) " + "=" * 20)
     print(result["screenplay_markdown"])
-    print("\n" + "=" * 20 + " SCREENPLAY (Fountain) " + "=" * 20)
+    print("\n" + "=" * 20 + " SCRIPT " + "=" * 20)
     print(result["fountain_script"])
     print("\n" + "=" * 20 + " CHARACTER BIBLE " + "=" * 20)
     print(result["character_bible"])
@@ -140,11 +141,11 @@ def run(argv: list[str] | None = None) -> ScreenplayState:
     config = {"configurable": {"thread_id": f"cli-{id(args)}"}}
     result = run_interactive(app, initial_state, config)
 
-    stem = resolve_output_stem(args.output)
-    if stem is None:
+    output_dir = resolve_output_dir(args.output)
+    if output_dir is None:
         print_outputs(result)
     else:
-        for path in write_outputs(stem, result):
+        for path in write_outputs(output_dir, result):
             print(f"Wrote {path}")
     return result
 

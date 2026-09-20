@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from src.tools.search import SearchResult
+
 
 class InterviewTurn(TypedDict):
     question: str
@@ -17,6 +19,7 @@ class ScreenplayState(TypedDict):
     rag_run_id: str
     rag_indexed: bool
     research_notes: str
+    search_results: list[SearchResult]
     interview_transcript: list[InterviewTurn]
     interview_turn_count: int
     interview_complete: bool
@@ -28,6 +31,7 @@ class ScreenplayState(TypedDict):
     review_score: float
     revision_count: int
     max_revisions: int
+    overview: str
     character_bible: str
     location_bible: str
     bible_review_feedback: str
@@ -63,6 +67,7 @@ def new_initial_state(
         rag_run_id="",
         rag_indexed=False,
         research_notes="",
+        search_results=[],
         interview_transcript=[],
         interview_turn_count=0,
         interview_complete=False,
@@ -74,6 +79,7 @@ def new_initial_state(
         review_score=0.0,
         revision_count=0,
         max_revisions=max_revisions,
+        overview="",
         character_bible="",
         location_bible="",
         bible_review_feedback="",

@@ -14,6 +14,7 @@ from src.formatters.fountain import (
     validate_fountain,
 )
 from src.graph.state import NodeUpdate, ScreenplayState
+from src.rag.store import clear_store
 from src.skills import get_skill
 from src.skills.base import T2I_PROMPT_GUIDELINES, OutputFormat
 
@@ -59,6 +60,9 @@ def make_finalize_node(llm: BaseChatModel | None = None) -> Callable[[Screenplay
         )
         key_art_box = f"**Key Art T2I Prompt:**\n```text\n{key_art_prompt}\n```\n"
         screenplay_markdown = f"{key_art_box}\n# Screenplay\n\n{body}{warnings_section}"
+
+        if state.get("rag_indexed") and state.get("rag_run_id"):
+            clear_store(state["rag_run_id"])
 
         return {
             "fountain_script": fountain_script,

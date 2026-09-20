@@ -28,7 +28,7 @@ def route_after_reviewer(state: ScreenplayState, settings: Settings | None = Non
         state["review_score"] >= settings.review_pass_score
         or state["revision_count"] >= state["max_revisions"]
     ):
-        return "character_bible"
+        return "overview"
     return "writer"
 
 

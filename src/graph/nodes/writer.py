@@ -30,7 +30,11 @@ def make_writer_node(
         else:
             format_instruction = (
                 'Write the full script as a JSON array only: [{"timecode": str, '
-                '"visual": str, "audio": str}, ...] - one object per beat.'
+                '"image": str, "description": str, "narration": str, "technical": str}, ...] '
+                "- one object per beat. image = the single literal T2I-promptable visual "
+                "shot; description = broader scene/action context beyond that one image; "
+                "narration = spoken/V.O. audio; technical = camera, lens, transition, or "
+                "editing notes."
             )
 
         is_revision = bool(state["review_feedback"])
