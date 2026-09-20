@@ -9,7 +9,7 @@ from main import (
     is_finish_command,
     parse_args,
     print_outputs,
-    resolve_output_stem,
+    resolve_output_dir,
     run_interactive,
     write_outputs,
 )
@@ -77,36 +77,35 @@ def test_parse_args_accepts_supported_extensions(tmp_path):
     assert args.files == [str(md_file)]
 
 
-def test_resolve_output_stem_none_returns_none():
-    assert resolve_output_stem(None) is None
+def test_resolve_output_dir_none_returns_none():
+    assert resolve_output_dir(None) is None
 
 
-def test_resolve_output_stem_strips_extension():
-    assert resolve_output_stem("scripts/my_script.fountain") == Path("scripts/my_script")
+def test_resolve_output_dir_returns_path_unchanged():
+    assert resolve_output_dir("scripts/my_run") == Path("scripts/my_run")
 
 
-def test_resolve_output_stem_no_extension_unchanged():
-    assert resolve_output_stem("scripts/my_script") == Path("scripts/my_script")
-
-
-def test_write_outputs_creates_four_files(tmp_path):
-    stem = tmp_path / "my_script"
+def test_write_outputs_creates_five_fixed_named_files_in_directory(tmp_path):
+    output_dir = tmp_path / "my_run"
     result = {
+        "overview": "OVERVIEW TEXT",
         "fountain_script": "FOUNTAIN TEXT",
         "screenplay_markdown": "MARKDOWN TEXT",
         "character_bible": "CHAR BIBLE",
         "location_bible": "LOC BIBLE",
     }
-    written = write_outputs(stem, result)
-    assert (tmp_path / "my_script.fountain").read_text() == "FOUNTAIN TEXT"
-    assert (tmp_path / "my_script.md").read_text() == "MARKDOWN TEXT"
-    assert (tmp_path / "my_script.characters.md").read_text() == "CHAR BIBLE"
-    assert (tmp_path / "my_script.locations.md").read_text() == "LOC BIBLE"
-    assert len(written) == 4
+    written = write_outputs(output_dir, result)
+    assert (output_dir / "Overview.md").read_text() == "OVERVIEW TEXT"
+    assert (output_dir / "Script.md").read_text() == "FOUNTAIN TEXT"
+    assert (output_dir / "Screenplay.md").read_text() == "MARKDOWN TEXT"
+    assert (output_dir / "CharacterBible.md").read_text() == "CHAR BIBLE"
+    assert (output_dir / "LocationBible.md").read_text() == "LOC BIBLE"
+    assert len(written) == 5
 
 
 def test_print_outputs_includes_all_sections(capsys):
     result = {
+        "overview": "OVERVIEW TEXT",
         "screenplay_markdown": "MARKDOWN TEXT",
         "fountain_script": "FOUNTAIN TEXT",
         "character_bible": "CHAR BIBLE",
@@ -114,6 +113,7 @@ def test_print_outputs_includes_all_sections(capsys):
     }
     print_outputs(result)
     out = capsys.readouterr().out
+    assert "OVERVIEW TEXT" in out
     assert "MARKDOWN TEXT" in out
     assert "FOUNTAIN TEXT" in out
     assert "CHAR BIBLE" in out

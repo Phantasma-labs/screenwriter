@@ -20,6 +20,7 @@ class Settings:
     ollama_base_url: str
     ollama_api_key: str
     ollama_embed_model: str
+    ollama_embed_base_url: str
     tavily_api_key: str | None
     rag_chunk_size: int
     rag_chunk_overlap: int
@@ -36,6 +37,7 @@ def load_settings() -> Settings:
         ollama_base_url=os.environ.get("OLLAMA_BASE_URL", "https://ollama.com"),
         ollama_api_key=os.environ.get("OLLAMA_API_KEY", ""),
         ollama_embed_model=os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
+        ollama_embed_base_url=os.environ.get("OLLAMA_EMBED_BASE_URL", "http://localhost:11434"),
         tavily_api_key=os.environ.get("TAVILY_API_KEY") or None,
         rag_chunk_size=int(os.environ.get("RAG_CHUNK_SIZE", "1000")),
         rag_chunk_overlap=int(os.environ.get("RAG_CHUNK_OVERLAP", "150")),
@@ -68,9 +70,7 @@ def get_llm(settings: Settings | None = None, temperature: float = 0.7) -> ChatO
 
 def get_embeddings(settings: Settings | None = None) -> OllamaEmbeddings:
     settings = settings or load_settings()
-    api_key = _require_api_key(settings)
     return OllamaEmbeddings(
         model=settings.ollama_embed_model,
-        base_url=settings.ollama_base_url,
-        client_kwargs={"headers": {"Authorization": f"Bearer {api_key}"}},
+        base_url=settings.ollama_embed_base_url,
     )

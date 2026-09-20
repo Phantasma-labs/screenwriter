@@ -6,14 +6,17 @@ from pydantic import BaseModel
 from src.utils import extract_json_array
 
 TABLE_HEADER = (
-    "| TIMECODE / BEAT | VISUAL & CAMERA (VIDEO) | AUDIO, DIALOGUE & SFX |\n|---|---|---|\n"
+    "| TIMECODE / BEAT | IMAGE (T2I SHOT) | DESCRIPTION | NARRATION | TECHNICAL |\n"
+    "|---|---|---|---|---|\n"
 )
 
 
 class AVBeat(BaseModel):
     timecode: str
-    visual: str
-    audio: str
+    image: str
+    description: str
+    narration: str
+    technical: str
 
 
 def parse_av_beats(raw: str) -> list[AVBeat]:
@@ -23,5 +26,8 @@ def parse_av_beats(raw: str) -> list[AVBeat]:
 def render_dual_column_table(beats: list[AVBeat]) -> str:
     if not beats:
         return TABLE_HEADER
-    rows = "\n".join(f"| {b.timecode} | {b.visual} | {b.audio} |" for b in beats)
+    rows = "\n".join(
+        f"| {b.timecode} | {b.image} | {b.description} | {b.narration} | {b.technical} |"
+        for b in beats
+    )
     return TABLE_HEADER + rows + "\n"

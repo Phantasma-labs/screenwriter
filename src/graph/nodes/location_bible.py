@@ -13,7 +13,10 @@ from src.skills.base import T2I_PROMPT_GUIDELINES
 
 _SYSTEM_PROMPT = (
     "You identify every key location in a script and write one production "
-    "bible entry per location.\n\n" + T2I_PROMPT_GUIDELINES
+    "bible entry per location.\n\n"
+    "Only include locations that actually appear on screen (host a scene via an "
+    "INT./EXT. heading or an action beat) - not places that are merely "
+    "mentioned in dialogue but never shown.\n\n" + T2I_PROMPT_GUIDELINES
 )
 
 _RESPONSE_INSTRUCTION = (

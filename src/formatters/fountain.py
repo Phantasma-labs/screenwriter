@@ -48,14 +48,19 @@ def validate_fountain(text: str) -> list[str]:
 
 def render_dual_column_as_fountain(beats: list[AVBeat]) -> str:
     """Maps Dual-Column A/V beats into Fountain conventions: action lines for
-    VISUAL, a NARRATOR character cue for AUDIO. SFX/OST/graphics notes the
-    writer already wrote inline in visual/audio text pass through as-is."""
+    IMAGE/DESCRIPTION, a parenthetical for TECHNICAL notes, and a NARRATOR
+    character cue for NARRATION. SFX/OST/graphics notes the writer already
+    wrote inline in image/description/narration text pass through as-is."""
     lines: list[str] = []
     for beat in beats:
         lines.append(f"[[{beat.timecode}]]")
-        lines.append(beat.visual.strip())
+        lines.append(beat.image.strip())
+        if beat.description.strip():
+            lines.append(beat.description.strip())
+        if beat.technical.strip():
+            lines.append(f"({beat.technical.strip()})")
         lines.append("")
         lines.append("NARRATOR")
-        lines.append(beat.audio.strip())
+        lines.append(beat.narration.strip())
         lines.append("")
     return "\n".join(lines).rstrip("\n")

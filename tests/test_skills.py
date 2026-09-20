@@ -12,6 +12,11 @@ def test_master_scene_rules_mentions_scene_headings():
     assert "EXT." in MASTER_SCENE_RULES
 
 
+def test_master_scene_rules_mentions_subheaders_and_montage():
+    assert "subheader" in MASTER_SCENE_RULES.lower()
+    assert "montage" in MASTER_SCENE_RULES.lower()
+
+
 def test_t2i_guidelines_mentions_nano_banana():
     assert "Nano Banana" in T2I_PROMPT_GUIDELINES
 

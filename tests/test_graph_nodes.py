@@ -8,11 +8,12 @@ from src.graph.nodes.finalize import make_finalize_node
 from src.graph.nodes.ingest import make_ingest_node
 from src.graph.nodes.location_bible import make_location_bible_node
 from src.graph.nodes.outliner import make_outliner_node
+from src.graph.nodes.overview import make_overview_node
 from src.graph.nodes.researcher import make_researcher_node
 from src.graph.nodes.reviewer import make_reviewer_node
 from src.graph.nodes.writer import make_writer_node
 from src.graph.state import new_initial_state
-from src.rag.store import clear_store, get_store
+from src.rag.store import EphemeralVectorStore, clear_store, get_store, register_store
 from src.tools.search import SearchResult
 from tests.conftest import FakeChatModel
 
@@ -31,6 +32,7 @@ def _settings(**overrides: object) -> Settings:
         ollama_base_url="https://ollama.com",
         ollama_api_key="k",
         ollama_embed_model="e",
+        ollama_embed_base_url="http://localhost:11434",
         tavily_api_key=None,
         rag_chunk_size=50,
         rag_chunk_overlap=5,
@@ -90,12 +92,35 @@ def test_ingest_node_long_context_indexes_into_rag(tmp_path):
         clear_store(result.get("rag_run_id", ""))
 
 
+class _FailingEmbeddings:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise RuntimeError("unauthorized (status code: 401)")
+
+    def embed_query(self, text: str) -> list[float]:
+        raise RuntimeError("unauthorized (status code: 401)")
+
+
+def test_ingest_node_falls_back_when_embeddings_fail(tmp_path):
+    md_file = tmp_path / "long.md"
+    md_file.write_text("word " * 50, encoding="utf-8")
+    node = make_ingest_node(
+        embeddings=_FailingEmbeddings(), settings=_settings(rag_min_chars_to_index=20)
+    )
+    result = node(_state(file_paths=[str(md_file)]))
+    assert result["rag_indexed"] is False
+    assert "rag_run_id" not in result
+    assert "word" in result["parsed_context"]
+    assert "[INGEST WARNINGS]" in result["parsed_context"]
+    assert "RAG indexing failed" in result["parsed_context"]
+
+
 def test_researcher_node_disabled_returns_empty_notes():
     node = make_researcher_node(
         enabled=False, search_fn=lambda q: [SearchResult(title="x", url="u", snippet="s")]
     )
     result = node(_state(topic="anything"))
     assert result["research_notes"] == ""
+    assert result["search_results"] == []
 
 
 def test_researcher_node_enabled_formats_results():
@@ -108,6 +133,9 @@ def test_researcher_node_enabled_formats_results():
     assert "Title" in result["research_notes"]
     assert "Snippet text" in result["research_notes"]
     assert "http://x" in result["research_notes"]
+    assert result["search_results"] == [
+        SearchResult(title="Title", url="http://x", snippet="Snippet text")
+    ]
 
 
 def test_outliner_node_returns_llm_output_as_outline():
@@ -161,7 +189,12 @@ def test_writer_node_uses_dual_column_instruction_for_commercial_skill():
             captured_messages.append(messages)
             return super().invoke(messages, **kwargs)
 
-    llm = _CapturingLLM(responses=['[{"timecode": "0:00", "visual": "v", "audio": "a"}]'])
+    llm = _CapturingLLM(
+        responses=[
+            '[{"timecode": "0:00", "image": "i", "description": "d", '
+            '"narration": "n", "technical": "t"}]'
+        ]
+    )
     node = make_writer_node(llm=llm, retrieve_fn=lambda run_id, query, k: [])
     node(_state(skill="commercial", outline="1. Hook"))
     human_content = str(captured_messages[0][-1].content)
@@ -201,6 +234,32 @@ def test_reviewer_node_falls_back_gracefully_on_unparseable_response():
     result = node(_state(draft="draft text"))
     assert result["review_score"] == 0.0
     assert "could not be parsed" in result["review_feedback"]
+
+
+_OVERVIEW_JSON = (
+    '{"story_description": "A retired detective solves crimes via voicemail.", '
+    '"duration_estimate": "8-10 minutes", "frame_format": "Digital Cinema, 4K", '
+    '"aspect_ratio": "2.39:1", "camera": "ARRI Alexa Mini", '
+    '"lenses": "Zeiss Supreme Primes, 35mm and 50mm"}'
+)
+
+
+def test_overview_node_renders_entry_from_valid_json():
+    llm = FakeChatModel(responses=[_OVERVIEW_JSON])
+    node = make_overview_node(llm=llm)
+    result = node(_state(draft="INT. OFFICE - DAY\n\nJANE stares at the phone."))
+    assert "# Overview" in result["overview"]
+    assert "A retired detective solves crimes via voicemail." in result["overview"]
+    assert "2.39:1" in result["overview"]
+    assert "ARRI Alexa Mini" in result["overview"]
+
+
+def test_overview_node_falls_back_gracefully_on_unparseable_response():
+    llm = FakeChatModel(responses=["not json"])
+    node = make_overview_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert "# Overview" in result["overview"]
+    assert "could not be parsed" in result["overview"]
 
 
 _CHARACTER_JSON = (
@@ -262,6 +321,38 @@ def test_character_bible_node_revision_pass_bumps_revision_count():
     assert result["bible_revision_count"] == 1
 
 
+def test_character_bible_node_system_prompt_excludes_off_screen_voices():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "narrator" in system_content
+    assert "on screen" in system_content
+
+
+def test_character_bible_node_system_prompt_requires_white_background_wardrobe():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "wardrobe_prompt" in system_content
+    assert "white" in system_content
+
+
 _LOCATION_JSON = (
     '[{"name": "Office", "description": "A cramped detective office.", '
     '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}]'
@@ -281,6 +372,21 @@ def test_location_bible_node_empty_on_unparseable_response():
     node = make_location_bible_node(llm=llm)
     result = node(_state(draft="draft text"))
     assert result["location_bible"] == "# Location Bible\n\nNo locations identified.\n"
+
+
+def test_location_bible_node_system_prompt_excludes_off_screen_locations():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_LOCATION_JSON])
+    node = make_location_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "on screen" in system_content
 
 
 def test_bible_reviewer_node_parses_valid_json_and_does_not_touch_revision_count():
@@ -324,11 +430,17 @@ def test_finalize_node_short_film_produces_fountain_and_markdown():
 
 
 def test_finalize_node_dual_column_skill_produces_table_and_narrator_fountain():
-    draft = '[{"timecode": "0:00", "visual": "Logo reveal", "audio": "Sting plays"}]'
+    draft = (
+        '[{"timecode": "0:00", "image": "Logo reveal", "description": "Logo grows.", '
+        '"narration": "Sting plays", "technical": "Slow zoom in"}]'
+    )
     llm = FakeChatModel(responses=["Create a minimalist poster with a bold logo."])
     node = make_finalize_node(llm=llm)
     result = node(_state(skill="commercial", draft=draft))
-    assert "| 0:00 | Logo reveal | Sting plays |" in result["screenplay_markdown"]
+    assert (
+        "| 0:00 | Logo reveal | Logo grows. | Sting plays | Slow zoom in |"
+        in (result["screenplay_markdown"])
+    )
     assert "NARRATOR" in result["fountain_script"]
     assert "Sting plays" in result["fountain_script"]
     assert "## Formatting Warnings" not in result["screenplay_markdown"]
@@ -351,3 +463,22 @@ def test_finalize_node_flags_long_action_block_in_formatting_warnings():
     result = node(_state(skill="short_film", draft=draft))
     assert "## Formatting Warnings" in result["screenplay_markdown"]
     assert "Action block has 5 lines (max 4)" in result["screenplay_markdown"]
+
+
+def test_finalize_node_clears_rag_store_when_indexed():
+    run_id = "run-finalize-cleanup"
+    register_store(run_id, EphemeralVectorStore(_FakeEmbeddings()))
+    assert get_store(run_id) is not None
+
+    llm = FakeChatModel(responses=["Create a moody poster."])
+    node = make_finalize_node(llm=llm)
+    node(_state(draft="INT. ROOM - DAY\n\nShe waits.", rag_indexed=True, rag_run_id=run_id))
+
+    assert get_store(run_id) is None
+
+
+def test_finalize_node_does_not_error_when_not_indexed():
+    llm = FakeChatModel(responses=["Create a moody poster."])
+    node = make_finalize_node(llm=llm)
+    result = node(_state(draft="INT. ROOM - DAY\n\nShe waits.", rag_indexed=False, rag_run_id=""))
+    assert result["status"] == "finalized"

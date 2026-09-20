@@ -25,12 +25,16 @@ from src.formatters.fountain import (
 def test_parse_av_beats_valid_json():
     raw = (
         "Here is the script:\n"
-        '[{"timecode": "0:00-0:03", "visual": "Logo reveal", "audio": "Upbeat sting"}]'
+        '[{"timecode": "0:00-0:03", "image": "Logo reveal", "description": "Logo grows.", '
+        '"narration": "Upbeat sting", "technical": "Slow zoom in"}]'
     )
     beats = parse_av_beats(raw)
     assert len(beats) == 1
     assert beats[0].timecode == "0:00-0:03"
-    assert beats[0].visual == "Logo reveal"
+    assert beats[0].image == "Logo reveal"
+    assert beats[0].description == "Logo grows."
+    assert beats[0].narration == "Upbeat sting"
+    assert beats[0].technical == "Slow zoom in"
 
 
 def test_parse_av_beats_invalid_returns_empty():
@@ -42,9 +46,9 @@ def test_render_dual_column_table_header_only_when_empty():
 
 
 def test_render_dual_column_table_includes_rows():
-    beats = [AVBeat(timecode="0:00", visual="V1", audio="A1")]
+    beats = [AVBeat(timecode="0:00", image="I1", description="D1", narration="N1", technical="T1")]
     table = render_dual_column_table(beats)
-    assert "| 0:00 | V1 | A1 |" in table
+    assert "| 0:00 | I1 | D1 | N1 | T1 |" in table
     assert table.startswith(TABLE_HEADER)
 
 
@@ -79,11 +83,19 @@ def test_validate_fountain_resets_after_character_cue():
 
 def test_render_dual_column_as_fountain_produces_narrator_cues():
     beats = [
-        AVBeat(timecode="0:00-0:03", visual="Logo reveal on black.", audio="Upbeat sting plays.")
+        AVBeat(
+            timecode="0:00-0:03",
+            image="Logo reveal on black.",
+            description="Logo grows to fill frame.",
+            narration="Upbeat sting plays.",
+            technical="Slow zoom in, 50mm.",
+        )
     ]
     result = render_dual_column_as_fountain(beats)
     assert "[[0:00-0:03]]" in result
     assert "Logo reveal on black." in result
+    assert "Logo grows to fill frame." in result
+    assert "Slow zoom in, 50mm." in result
     assert "NARRATOR" in result
     assert "Upbeat sting plays." in result
 

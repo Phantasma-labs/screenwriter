@@ -14,7 +14,16 @@ from src.skills.base import T2I_PROMPT_GUIDELINES
 _SYSTEM_PROMPT = (
     "You identify the principal cast of a script - characters significant enough "
     "to warrant a full production bible entry, not every speaking role - and write "
-    "one entry per principal character.\n\n" + T2I_PROMPT_GUIDELINES
+    "one entry per principal character.\n\n"
+    "Only include characters who physically appear on screen. Never write an "
+    "entry for a voice-only role (e.g. an off-screen NARRATOR or a V.O.-only "
+    "voice) or a sound/music cue (e.g. MUSIC, SFX, OST) even if it's formatted "
+    "like a character cue in the draft - those never appear on screen and have "
+    "no visual appearance to bible.\n\n"
+    "The wardrobe_prompt must render the character's full wardrobe and "
+    "accessories against a plain, seamless white studio background (no set or "
+    "location) - full-body, evenly lit - since it will be used later as a clean "
+    "visual reference.\n\n" + T2I_PROMPT_GUIDELINES
 )
 
 _RESPONSE_INSTRUCTION = (

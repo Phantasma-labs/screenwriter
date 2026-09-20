@@ -20,6 +20,12 @@ MASTER_SCENE_RULES = """MASTER SCENE FORMAT RULES (Fountain-compatible):
   or fewer per paragraph; break longer beats into multiple short paragraphs.
 - Transitions are ALL CAPS and end in "TO:" (e.g. CUT TO:, DISSOLVE TO:) or
   are FADE IN: / FADE OUT., used sparingly.
+- Subheaders: bare ALL-CAPS lines with no INT./EXT. (e.g. "HALLWAY",
+  "FILBERT'S POV") shift position/POV within a scene without a full new
+  slugline - use sparingly, only to break up complex or lengthy scenes.
+- Montage / special sequences get their own ALL-CAPS label line immediately
+  before the beats they cover (e.g. "INTERCUT PHONE CONVERSATION", "IN SLOW
+  MOTION -") to make pacing/tone shifts explicit.
 - Show, don't tell: action lines describe only what the camera can see."""
 
 T2I_PROMPT_GUIDELINES = """T2I PROMPT GUIDELINES (target model: Nano Banana Pro):

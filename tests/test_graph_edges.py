@@ -17,6 +17,7 @@ def _settings(**overrides: object) -> Settings:
         ollama_base_url="https://ollama.com",
         ollama_api_key="k",
         ollama_embed_model="e",
+        ollama_embed_base_url="http://localhost:11434",
         tavily_api_key=None,
         rag_chunk_size=1000,
         rag_chunk_overlap=150,
@@ -67,7 +68,7 @@ def test_route_after_interview_wait_exits_when_autonomous():
 
 def test_route_after_reviewer_passes_on_high_score():
     state = _state(review_score=8.5, revision_count=0, max_revisions=2)
-    assert route_after_reviewer(state, _settings()) == "character_bible"
+    assert route_after_reviewer(state, _settings()) == "overview"
 
 
 def test_route_after_reviewer_revises_on_low_score_under_cap():
@@ -77,7 +78,7 @@ def test_route_after_reviewer_revises_on_low_score_under_cap():
 
 def test_route_after_reviewer_halts_at_revision_cap():
     state = _state(review_score=4.0, revision_count=2, max_revisions=2)
-    assert route_after_reviewer(state, _settings()) == "character_bible"
+    assert route_after_reviewer(state, _settings()) == "overview"
 
 
 def test_route_after_bible_reviewer_passes_on_high_score():
