@@ -18,6 +18,8 @@ def test_build_workflow_compiles_with_all_expected_nodes():
         "writer",
         "reviewer",
         "overview",
+        "overview_discussion_wait",
+        "overview_revise",
         "character_bible",
         "location_bible",
         "bible_reviewer",
