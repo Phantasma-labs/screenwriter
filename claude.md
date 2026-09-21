@@ -45,12 +45,20 @@ interrupt boundaries):
 ## Skills
 Six `SkillProfile`s in `src/skills/`: `short_film` (Master Scene Fountain
 output) and `documentary`, `commercial`, `product_shot`, `learning_dev`,
-`infomedia` (Dual-Column beat-table output: Timecode / Image / Description /
-Narration / Technical per `AVBeat` in `src/formatters/dual_column.py` - Image
-is the single literal T2I-promptable shot, Description is broader scene/action
-context, Narration is spoken/V.O. audio, Technical is camera/lens/transition
-notes; also mapped into Fountain conventions for `Script.md`). Each skill
-defines its own system prompt, outline structure, and review checklist.
+`infomedia` (Dual-Column beat-table output: Timecode / First Frame Image /
+Last Frame Image / I2V Prompt / Description / Narration / Technical per
+`AVBeat` in `src/formatters/dual_column.py` - First Frame Image is the
+literal T2I-promptable shot the beat opens on; Last Frame Image is an
+optional second T2I prompt for the shot's ending frame, written only when
+the shot's visual state changes meaningfully within its duration; I2V Prompt
+is the image-to-video motion direction, written FFLF-style when a Last Frame
+Image is present or FF-style when it isn't; Description is broader
+scene/action context, Narration is spoken/V.O. audio, Technical is
+camera/lens/transition notes; Screenplay.md renders a compact table plus a
+per-beat card with the full T2I/I2V prompts, while Script.md maps only the
+First Frame Image into Fountain conventions). Each skill defines its own
+system prompt (including realistic per-format shot-pacing guidance),
+outline structure, and review checklist.
 
 ## Output Files
 Given `--output <dir>`, a run writes exactly five fixed-named files into that
