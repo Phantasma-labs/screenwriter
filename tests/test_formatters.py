@@ -81,6 +81,7 @@ def test_render_dual_column_table_includes_first_frame_and_i2v_cards():
         AVBeat(
             timecode="0:00",
             first_frame_image="A detailed first frame prompt.",
+            i2v_prompt="A detailed motion prompt.",
             description="D1",
             narration="N1",
             technical="T1",
@@ -91,6 +92,7 @@ def test_render_dual_column_table_includes_first_frame_and_i2v_cards():
     assert "**First Frame T2I Prompt:**" in table
     assert "A detailed first frame prompt." in table
     assert "**I2V Prompt:**" in table
+    assert "A detailed motion prompt." in table
 
 
 def test_render_dual_column_table_omits_last_frame_card_when_empty():
@@ -164,8 +166,8 @@ def test_render_dual_column_as_fountain_produces_narrator_cues():
     ]
     result = render_dual_column_as_fountain(beats)
     assert "[[0:00-0:03]]" in result
-    assert "Logo reveal on black." in result
     assert "Logo grows to fill frame." in result
+    assert "Logo reveal on black." not in result
     assert "Slow zoom in, 50mm." in result
     assert "NARRATOR" in result
     assert "Upbeat sting plays." in result

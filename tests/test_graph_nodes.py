@@ -608,9 +608,17 @@ def test_finalize_node_dual_column_falls_back_to_raw_draft_on_unparseable_json()
     llm = FakeChatModel(responses=["Create a minimalist poster with a bold logo."])
     node = make_finalize_node(llm=llm)
     result = node(_state(skill="commercial", draft=draft))
-    assert "Could not parse the draft as structured A/V beats" in result["screenplay_markdown"]
+    assert "could not parse the draft as structured A/V beats" in result["screenplay_markdown"]
     assert "not valid json" in result["screenplay_markdown"]
     assert result["fountain_script"] != ""
+
+
+def test_finalize_node_dual_column_flags_truncated_json_in_fallback_note():
+    draft = '[{"timecode": "0:00", "first_frame_image": "x", "description": "d"'
+    llm = FakeChatModel(responses=["Create a moody poster."])
+    node = make_finalize_node(llm=llm)
+    result = node(_state(skill="commercial", draft=draft))
+    assert "response looks truncated" in result["screenplay_markdown"]
 
 
 def test_finalize_node_flags_long_action_block_in_formatting_warnings():
