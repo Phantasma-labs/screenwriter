@@ -167,3 +167,21 @@ def test_run_interactive_completes_immediately_when_no_interrupt(capsys):
     )
 
     assert result == {"status": "finalized"}
+
+
+def test_run_interactive_handles_overview_discussion_interrupt(monkeypatch, capsys):
+    batches = [
+        [{"overview": {}}, {"__interrupt__": (_FakeInterrupt({"kind": "overview_discussion", "overview": "# Overview\n\nDraft."}),)}],
+        [{"character_bible": {}}, {"finalize": {}}],
+    ]
+    app = _FakeApp(batches, final_values={"status": "finalized"})
+    monkeypatch.setattr("builtins.input", lambda prompt="": "/finish")
+
+    result = run_interactive(
+        app, initial_state={"topic": "t"}, config={"configurable": {"thread_id": "x"}}
+    )
+
+    assert result == {"status": "finalized"}
+    out = capsys.readouterr().out
+    assert "# Overview" in out
+    assert "Draft." in out
