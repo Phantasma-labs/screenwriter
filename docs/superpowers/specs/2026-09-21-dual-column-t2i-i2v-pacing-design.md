@@ -121,7 +121,7 @@ A new sibling constant, used only by the Dual-Column `format_instruction`
 (character/location bible and key art don't have motion to describe):
 
 ```python
-I2V_PROMPT_GUIDELINES = """I2V PROMPT GUIDELINES (image-to-video, cinematographer's motion direction):
+I2V_PROMPT_GUIDELINES = """I2V PROMPT GUIDELINES (image-to-video motion direction):
 - Write as a cinematographer directing motion between frames: camera movement
   (push in, pull out, pan, tilt, handheld drift, static), subject motion, and
   pacing - not a restatement of the still image's content.
