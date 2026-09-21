@@ -97,3 +97,28 @@ def test_t2i_guidelines_specifies_length_target():
 def test_i2v_guidelines_covers_ff_and_fflf_techniques():
     assert "FFLF" in I2V_PROMPT_GUIDELINES
     assert "FF (First-Frame-only)" in I2V_PROMPT_GUIDELINES
+
+
+_DUAL_COLUMN_PACING = [
+    ("documentary", "2-6s"),
+    ("commercial", "1-4s"),
+    ("product_shot", "3-8s"),
+    ("learning_dev", "5-15s"),
+    ("infomedia", "2-5s"),
+]
+
+
+@pytest.mark.parametrize("name,keyword", _DUAL_COLUMN_PACING)
+def test_dual_column_skill_persona_mentions_realistic_pacing(name, keyword):
+    skill = get_skill(name)
+    assert keyword in skill.persona
+
+
+@pytest.mark.parametrize(
+    "name", ["documentary", "commercial", "product_shot", "learning_dev", "infomedia"]
+)
+def test_dual_column_skill_review_criteria_requires_t2i_i2v_richness(name):
+    skill = get_skill(name)
+    criteria_text = " ".join(skill.review_criteria)
+    assert "150-250 word" in criteria_text
+    assert "FFLF" in criteria_text
