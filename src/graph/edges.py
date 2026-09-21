@@ -32,6 +32,18 @@ def route_after_reviewer(state: ScreenplayState, settings: Settings | None = Non
     return "writer"
 
 
+def route_after_overview(state: ScreenplayState) -> str:
+    if state["autonomous"]:
+        return "character_bible"
+    return "overview_discussion_wait"
+
+
+def route_after_overview_discussion_wait(state: ScreenplayState) -> str:
+    if state["overview_discussion_finished"]:
+        return "character_bible"
+    return "overview_revise"
+
+
 def route_after_bible_reviewer(state: ScreenplayState, settings: Settings | None = None) -> str:
     settings = settings or load_settings()
     if (
