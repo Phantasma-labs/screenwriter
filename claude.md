@@ -28,16 +28,17 @@ end-user setup/usage; this file is for anyone changing the code.
 * CLI & streaming: stdlib `argparse` + LangGraph `app.stream(..., stream_mode="updates")` event iteration in `main.py`, with `langgraph.types.interrupt`/`Command(resume=...)` driving the interview pause/resume loop
 
 ## Pipeline (LangGraph nodes)
-`src/graph/workflow.py` wires 12 nodes (11 pipeline stages; the interview
-stage is split across two nodes for the interrupt boundary):
+`src/graph/workflow.py` wires 14 nodes (12 pipeline stages; the interview
+and overview-discussion stages are each split across two nodes for their
+interrupt boundaries):
 
-`ingest -> interview_ask -> [interview_wait <-> interview_ask]* -> researcher -> outliner -> writer -> reviewer -> [writer <-> reviewer]* -> overview -> character_bible -> location_bible -> bible_reviewer -> [character_bible <-> bible_reviewer]* -> finalize`
+`ingest -> interview_ask -> [interview_wait <-> interview_ask]* -> researcher -> outliner -> writer -> reviewer -> [writer <-> reviewer]* -> overview -> [overview_discussion_wait <-> overview_revise]* -> character_bible -> location_bible -> bible_reviewer -> [character_bible <-> bible_reviewer]* -> finalize`
 
 * `ingest`: parses `--files`, surfaces parser warnings inline in `parsed_context`, and conditionally indexes into the ephemeral RAG store.
 * `interview_ask` / `interview_wait`: asks up to `MAX_INTERVIEW_QUESTIONS` questions; `interview_wait` is the node that actually calls `interrupt()` and blocks for CLI input, so `--autonomous` (or a `/finish` reply) can short-circuit the loop from `interview_ask` without ever hitting the interrupt boundary.
 * `researcher`: optional Tavily/DuckDuckGo web research when `--enable-search` is passed.
 * `outliner` / `writer` / `reviewer`: actor-critic loop - `writer` only increments `revision_count` when it's redrafting against `review_feedback`; `reviewer` never touches the counter. Loops until `review_score >= REVIEW_PASS_SCORE` or `revision_count >= max_revisions`.
-* `overview`: single one-shot LLM call (no revision loop) once the draft passes review - writes a short story description plus production tech specs (duration, frame format, aspect ratio, camera, lenses) to `Overview.md`.
+* `overview`: single one-shot LLM call once the draft passes review, producing a pre-result story description plus production tech specs (duration, frame format, aspect ratio, camera, lenses). Non-autonomous runs then pause at `overview_discussion_wait` for free-form human feedback; `overview_revise` regenerates the overview against that feedback and loops back to `overview_discussion_wait` until the user accepts (no revision cap - the human decides when to stop), then the pipeline proceeds to `character_bible`. Autonomous runs skip straight from `overview` to `character_bible`. Whatever `state["overview"]` holds when the loop exits is written to `Overview.md`.
 * `character_bible` / `location_bible` / `bible_reviewer`: a second, symmetric actor-critic loop over the production bibles, gated by `bible_review_score`/`MAX_BIBLE_REVISIONS` the same way.
 * `finalize`: renders the Fountain script (`Script.md`) and screenplay Markdown (`Screenplay.md`) (falling back to the raw draft with a note if a Dual-Column skill's A/V beats fail to parse), runs `validate_fountain` and appends any formatting warnings, and writes the key-art T2I prompt.
 
