@@ -550,6 +550,32 @@ def test_bible_reviewer_node_falls_back_gracefully_on_unparseable_response():
     assert "bible_revision_count" not in result
 
 
+def test_bible_reviewer_node_system_prompt_requires_full_length_t2i_prompts():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(
+        responses=[
+            '{"score": 9.0, "passed": true, "critique": "Consistent.", "actionable_revisions": []}'
+        ]
+    )
+    node = make_bible_reviewer_node(llm=llm)
+    node(
+        _state(
+            draft="draft text",
+            character_bible="# Character Bible\n",
+            location_bible="# Location Bible\n",
+            bible_revision_count=0,
+        )
+    )
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "150-250 word" in system_content
+
+
 def test_finalize_node_short_film_produces_fountain_and_markdown():
     llm = FakeChatModel(responses=["Create a moody poster of a detective by a window."])
     node = make_finalize_node(llm=llm)
