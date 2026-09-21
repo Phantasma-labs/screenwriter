@@ -47,6 +47,8 @@ def make_overview_revise_node(
     llm = llm or get_llm(temperature=0.6)
 
     def overview_revise_node(state: ScreenplayState) -> NodeUpdate:
+        if not state["overview_discussion_transcript"]:
+            return {"overview": state["overview"]}
         skill = get_skill(state["skill"])
         latest_feedback = state["overview_discussion_transcript"][-1]["feedback"]
         messages = [

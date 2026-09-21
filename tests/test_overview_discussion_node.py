@@ -73,7 +73,10 @@ def test_overview_revise_node_regenerates_overview_from_feedback():
         draft="INT. OFFICE - DAY\n\nJANE stares at the phone.",
         overview="# Overview\n\nOriginal text.\n",
         overview_discussion_transcript=[
-            {"feedback": "Make the tone darker.", "overview_snapshot": "# Overview\n\nOriginal text.\n"}
+            {
+                "feedback": "Make the tone darker.",
+                "overview_snapshot": "# Overview\n\nOriginal text.\n",
+            }
         ],
     )
     result = node(state)
@@ -92,3 +95,12 @@ def test_overview_revise_node_keeps_prior_overview_on_unparseable_response():
     )
     result = node(state)
     assert result["overview"] == "# Overview\n\nOriginal text.\n"
+
+
+def test_overview_revise_node_returns_unchanged_overview_when_transcript_empty():
+    llm = FakeChatModel(responses=["should never be called"])
+    node = make_overview_revise_node(llm=llm)
+    state = _state(overview="# Overview\n\nOriginal text.\n", overview_discussion_transcript=[])
+    result = node(state)
+    assert result["overview"] == "# Overview\n\nOriginal text.\n"
+    assert llm._call_count == 0
