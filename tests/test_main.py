@@ -170,8 +170,14 @@ def test_run_interactive_completes_immediately_when_no_interrupt(capsys):
 
 
 def test_run_interactive_handles_overview_discussion_interrupt(monkeypatch, capsys):
+    overview_interrupt = _FakeInterrupt(
+        {
+            "kind": "overview_discussion",
+            "overview": "# Overview\n\nDraft.",
+        }
+    )
     batches = [
-        [{"overview": {}}, {"__interrupt__": (_FakeInterrupt({"kind": "overview_discussion", "overview": "# Overview\n\nDraft."}),)}],
+        [{"overview": {}}, {"__interrupt__": (overview_interrupt,)}],
         [{"character_bible": {}}, {"finalize": {}}],
     ]
     app = _FakeApp(batches, final_values={"status": "finalized"})
