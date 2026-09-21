@@ -55,3 +55,10 @@ def test_new_initial_state_has_overview_discussion_defaults():
     assert state["overview_discussion_transcript"] == []
     assert state["overview_discussion_finished"] is False
     assert state["overview_discussion_has_feedback"] is False
+
+
+def test_new_initial_state_has_empty_character_names_default():
+    state = new_initial_state(
+        topic="x", skill="short_film", file_paths=[], max_revisions=2, max_bible_revisions=1
+    )
+    assert state["character_names"] == []

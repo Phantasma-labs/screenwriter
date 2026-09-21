@@ -16,7 +16,11 @@ _SYSTEM_PROMPT = (
     "bible entry per location.\n\n"
     "Only include locations that actually appear on screen (host a scene via an "
     "INT./EXT. heading or an action beat) - not places that are merely "
-    "mentioned in dialogue but never shown.\n\n" + T2I_PROMPT_GUIDELINES
+    "mentioned in dialogue but never shown.\n\n"
+    "A location entry describes a physical place or set - never a person. Do "
+    "not write an entry for a character, historical figure, narrator, or "
+    "interview subject, even if their name appears prominently in the draft; "
+    "people belong in the character bible, not here.\n\n" + T2I_PROMPT_GUIDELINES
 )
 
 _RESPONSE_INSTRUCTION = (
@@ -47,6 +51,10 @@ def make_location_bible_node(
         ]
         response = llm.invoke(messages)
         entries = parse_location_entries(str(response.content))
+        character_names = {name.strip().casefold() for name in state["character_names"]}
+        entries = [
+            entry for entry in entries if entry.name.strip().casefold() not in character_names
+        ]
         return {"location_bible": render_location_bible(entries)}
 
     return location_bible_node

@@ -190,7 +190,7 @@ def _render_done() -> None:
             st.info("No web references were found for this run.")
         else:
             for ref in references:
-                st.markdown(f"- [{ref['title']}]({ref['url']}) — {ref['snippet']}")
+                st.markdown(f"- [{ref['url']}]({ref['url']})")
 
 
 def _render_error() -> None:

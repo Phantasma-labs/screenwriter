@@ -353,6 +353,49 @@ def test_character_bible_node_system_prompt_excludes_off_screen_voices():
     assert "on screen" in system_content
 
 
+_CHARACTER_WITH_NARRATOR_AND_HISTORIAN_JSON = (
+    '[{"name": "Jane", "role": "Protagonist", "appearance": "Sharp business attire.", '
+    '"personality": "Relentless.", "voice": "Clipped.", "backstory": "Ex-detective.", '
+    '"headshot_prompt": "Create a headshot of Jane.", '
+    '"contact_sheet_prompt": "Create a contact sheet of Jane.", '
+    '"wardrobe_prompt": "Create a wardrobe shot of Jane."}, '
+    '{"name": "Narrator", "role": "Narrator (V.O.)", '
+    '"appearance": "Voice-only presence, no physical form.", '
+    '"personality": "Authoritative.", "voice": "Deep baritone.", "backstory": "N/A.", '
+    '"headshot_prompt": "n/a", "contact_sheet_prompt": "n/a", "wardrobe_prompt": "n/a"}, '
+    '{"name": "Dr. Loyo", "role": "Historian / Principal Interview Subject", '
+    '"appearance": "Archival researcher in a cardigan.", '
+    '"personality": "Rigorous.", "voice": "Measured.", "backstory": "Professor.", '
+    '"headshot_prompt": "n/a", "contact_sheet_prompt": "n/a", "wardrobe_prompt": "n/a"}]'
+)
+
+
+def test_character_bible_node_filters_out_narrator_and_historian_roles():
+    llm = FakeChatModel(responses=[_CHARACTER_WITH_NARRATOR_AND_HISTORIAN_JSON])
+    node = make_character_bible_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert "Jane" in result["character_bible"]
+    assert "Narrator" not in result["character_bible"]
+    assert "Dr. Loyo" not in result["character_bible"]
+    assert result["character_names"] == ["Jane", "Narrator", "Dr. Loyo"]
+
+
+def test_character_bible_node_system_prompt_excludes_documentary_apparatus():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "historian" in system_content
+    assert "interview subject" in system_content
+
+
 def test_character_bible_node_system_prompt_requires_white_background_wardrobe():
     captured_messages = []
 
@@ -388,6 +431,44 @@ def test_location_bible_node_empty_on_unparseable_response():
     node = make_location_bible_node(llm=llm)
     result = node(_state(draft="draft text"))
     assert result["location_bible"] == "# Location Bible\n\nNo locations identified.\n"
+
+
+_LOCATION_WITH_CHARACTER_JSON = (
+    '[{"name": "Office", "description": "A cramped detective office.", '
+    '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}, '
+    '{"name": "Pancho Villa", "description": "A revolutionary general on horseback.", '
+    '"mood": "Triumphant.", "t2i_prompt": "Create a portrait of Pancho Villa."}]'
+)
+
+
+def test_location_bible_node_filters_out_entries_matching_character_names():
+    llm = FakeChatModel(responses=[_LOCATION_WITH_CHARACTER_JSON])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="draft text", character_names=["Pancho Villa"]))
+    assert "Office" in result["location_bible"]
+    assert "Pancho Villa" not in result["location_bible"]
+
+
+def test_location_bible_node_filters_character_names_case_insensitively():
+    llm = FakeChatModel(responses=[_LOCATION_WITH_CHARACTER_JSON])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="draft text", character_names=["pancho villa"]))
+    assert "Pancho Villa" not in result["location_bible"]
+
+
+def test_location_bible_node_system_prompt_excludes_people():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_LOCATION_JSON])
+    node = make_location_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "never a person" in system_content
 
 
 def test_location_bible_node_system_prompt_excludes_off_screen_locations():
