@@ -11,6 +11,11 @@ class InterviewTurn(TypedDict):
     answer: str
 
 
+class OverviewDiscussionTurn(TypedDict):
+    feedback: str
+    overview_snapshot: str
+
+
 class ScreenplayState(TypedDict):
     topic: str
     skill: str
@@ -32,6 +37,8 @@ class ScreenplayState(TypedDict):
     revision_count: int
     max_revisions: int
     overview: str
+    overview_discussion_transcript: list[OverviewDiscussionTurn]
+    overview_discussion_finished: bool
     character_bible: str
     location_bible: str
     bible_review_feedback: str
@@ -80,6 +87,8 @@ def new_initial_state(
         revision_count=0,
         max_revisions=max_revisions,
         overview="",
+        overview_discussion_transcript=[],
+        overview_discussion_finished=False,
         character_bible="",
         location_bible="",
         bible_review_feedback="",
