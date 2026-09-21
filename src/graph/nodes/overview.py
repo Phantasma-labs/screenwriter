@@ -12,9 +12,12 @@ from src.graph.state import NodeUpdate, ScreenplayState
 from src.skills import get_skill
 
 _SYSTEM_PROMPT = (
-    "You write a single production overview for a finished screenplay: a short "
-    "story description plus realistic technical specs for how it would actually "
-    "be shot, consistent with its skill/format and tone."
+    "You write a single production overview for a finished screenplay. The "
+    "story_description is a full narrative synopsis covering the story's setup, "
+    "key plot beats, and resolution - several paragraphs, not a one-line "
+    "logline - so a reader who hasn't seen the draft understands what actually "
+    "happens. Follow it with realistic technical specs for how it would "
+    "actually be shot, consistent with its skill/format and tone."
 )
 
 _RESPONSE_INSTRUCTION = (

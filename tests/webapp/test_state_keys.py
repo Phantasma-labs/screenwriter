@@ -21,6 +21,7 @@ def test_stage_constants_are_unique():
         state_keys.STAGE_SETUP,
         state_keys.STAGE_RUNNING,
         state_keys.STAGE_AWAITING_ANSWER,
+        state_keys.STAGE_AWAITING_OVERVIEW_FEEDBACK,
         state_keys.STAGE_DONE,
         state_keys.STAGE_ERROR,
     ]

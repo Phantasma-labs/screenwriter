@@ -24,6 +24,8 @@ STATUS_BADGES = {
     "writer": "[WRITING DRAFT]",
     "reviewer": "[REVIEWING]",
     "overview": "[BUILDING OVERVIEW]",
+    "overview_discussion_wait": "[OVERVIEW DISCUSSION]",
+    "overview_revise": "[REVISING OVERVIEW]",
     "character_bible": "[BUILDING CHARACTER BIBLE]",
     "location_bible": "[BUILDING LOCATION BIBLE]",
     "bible_reviewer": "[REVIEWING BIBLES]",
@@ -55,7 +57,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output", "-o", default=None, help="Output directory for the four generated files"
     )
     parser.add_argument("--enable-search", action="store_true")
-    parser.add_argument("--autonomous", action="store_true", help="Skip the interview entirely")
+    parser.add_argument(
+        "--autonomous",
+        action="store_true",
+        help="Skip the interview and the overview discussion entirely",
+    )
     args = parser.parse_args(argv)
 
     for file_path in args.files:
@@ -110,12 +116,22 @@ def run_interactive(app: Any, initial_state: Any, config: dict[str, Any]) -> Scr
                 interrupt_payload = chunk["__interrupt__"]
                 if not interrupt_payload:
                     continue
-                question = interrupt_payload[0].value
-                print(f"[INTERVIEWING] {question}")
-                answer = input("> ")
-                current_input = Command(
-                    resume={"answer": answer, "autonomous": is_finish_command(answer)}
-                )
+                value = interrupt_payload[0].value
+                if isinstance(value, dict) and value.get("kind") == "overview_discussion":
+                    print("[OVERVIEW PRE-RESULT]")
+                    print(value["overview"])
+                    feedback = input("Feedback (or /finish to accept and continue): ")
+                    finish = is_finish_command(feedback)
+                    current_input = Command(
+                        resume={"feedback": "" if finish else feedback, "finish": finish}
+                    )
+                else:
+                    question = value
+                    print(f"[INTERVIEWING] {question}")
+                    answer = input("> ")
+                    current_input = Command(
+                        resume={"answer": answer, "autonomous": is_finish_command(answer)}
+                    )
                 interrupted = True
                 break
             for node_name in chunk:

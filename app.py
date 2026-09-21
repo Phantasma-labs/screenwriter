@@ -17,7 +17,7 @@ from src.output_files import build_output_files
 from src.parsers.base import ParserError
 from src.skills import available_skills
 from src.webapp.archive import build_markdown_zip
-from src.webapp.driver import run_single_pass
+from src.webapp.driver import run_single_pass, stage_for_interrupt
 from src.webapp.state_keys import (
     ENABLE_SEARCH,
     ERROR_MESSAGE,
@@ -25,6 +25,7 @@ from src.webapp.state_keys import (
     PENDING_QUESTION,
     STAGE,
     STAGE_AWAITING_ANSWER,
+    STAGE_AWAITING_OVERVIEW_FEEDBACK,
     STAGE_DONE,
     STAGE_ERROR,
     STAGE_SETUP,
@@ -68,7 +69,7 @@ def _drive(app: Any, current_input: Any, config: dict[str, Any]) -> None:
                 status_box.write(STATUS_BADGES.get(node_name, f"[{node_name.upper()}]"))
         if outcome.interrupted:
             st.session_state[PENDING_QUESTION] = outcome.question
-            st.session_state[STAGE] = STAGE_AWAITING_ANSWER
+            st.session_state[STAGE] = stage_for_interrupt(outcome.question)
         else:
             st.session_state[FINAL_RESULT] = outcome.final_values
             st.session_state[STAGE] = STAGE_DONE
@@ -90,7 +91,7 @@ def _render_setup(settings: Any) -> None:
         type=sorted(ext.lstrip(".") for ext in SUPPORTED_CONTEXT_EXTENSIONS),
     )
     enable_search = st.checkbox("Enable web research")
-    autonomous = st.checkbox("Autonomous (skip the interview)")
+    autonomous = st.checkbox("Autonomous (skip the interview and overview discussion)")
     max_revisions = st.number_input("Max revisions", min_value=0, max_value=10, value=2)
 
     if st.button("Start", type="primary", disabled=not topic.strip()):
@@ -126,6 +127,27 @@ def _render_awaiting_answer() -> None:
         st.rerun()
     if col2.button("Finish now, write autonomously"):
         resume = Command(resume={"answer": "", "autonomous": True})
+        _drive(app, resume, _config())
+        st.rerun()
+
+
+def _render_awaiting_overview_feedback() -> None:
+    app = get_compiled_app(st.session_state.get(ENABLE_SEARCH, False))
+    st.title("Screenwriter Agent")
+    payload = st.session_state[PENDING_QUESTION]
+    st.subheader("Overview pre-result")
+    st.markdown(payload["overview"])
+    transcript = app.get_state(_config()).values.get("overview_discussion_transcript", [])
+    for turn in transcript:
+        st.chat_message("user").write(turn["feedback"])
+    feedback = st.text_area("Feedback (leave blank and accept to continue)")
+    col1, col2 = st.columns(2)
+    if col1.button("Revise", type="primary", disabled=not feedback.strip()):
+        resume = Command(resume={"feedback": feedback, "finish": False})
+        _drive(app, resume, _config())
+        st.rerun()
+    if col2.button("Accept and continue"):
+        resume = Command(resume={"feedback": "", "finish": True})
         _drive(app, resume, _config())
         st.rerun()
 
@@ -168,7 +190,7 @@ def _render_done() -> None:
             st.info("No web references were found for this run.")
         else:
             for ref in references:
-                st.markdown(f"- [{ref['title']}]({ref['url']}) — {ref['snippet']}")
+                st.markdown(f"- [{ref['url']}]({ref['url']})")
 
 
 def _render_error() -> None:
@@ -195,6 +217,8 @@ def main() -> None:
         _render_setup(settings)
     elif stage == STAGE_AWAITING_ANSWER:
         _render_awaiting_answer()
+    elif stage == STAGE_AWAITING_OVERVIEW_FEEDBACK:
+        _render_awaiting_overview_feedback()
     elif stage == STAGE_DONE:
         _render_done()
     else:

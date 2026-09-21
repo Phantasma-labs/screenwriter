@@ -191,7 +191,7 @@ def test_writer_node_uses_dual_column_instruction_for_commercial_skill():
 
     llm = _CapturingLLM(
         responses=[
-            '[{"timecode": "0:00", "image": "i", "description": "d", '
+            '[{"timecode": "0:00", "first_frame_image": "i", "description": "d", '
             '"narration": "n", "technical": "t"}]'
         ]
     )
@@ -199,6 +199,9 @@ def test_writer_node_uses_dual_column_instruction_for_commercial_skill():
     node(_state(skill="commercial", outline="1. Hook"))
     human_content = str(captured_messages[0][-1].content)
     assert "JSON array" in human_content
+    assert "first_frame_image" in human_content
+    assert "150-250 words" in human_content
+    assert "FFLF" in human_content
 
 
 def test_reviewer_node_parses_valid_json():
@@ -260,6 +263,22 @@ def test_overview_node_falls_back_gracefully_on_unparseable_response():
     result = node(_state(draft="draft text"))
     assert "# Overview" in result["overview"]
     assert "could not be parsed" in result["overview"]
+
+
+def test_overview_node_system_prompt_requests_full_synopsis():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_OVERVIEW_JSON])
+    node = make_overview_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "synopsis" in system_content
+    assert "not a one-line logline" in system_content
 
 
 _CHARACTER_JSON = (
@@ -337,6 +356,49 @@ def test_character_bible_node_system_prompt_excludes_off_screen_voices():
     assert "on screen" in system_content
 
 
+_CHARACTER_WITH_NARRATOR_AND_HISTORIAN_JSON = (
+    '[{"name": "Jane", "role": "Protagonist", "appearance": "Sharp business attire.", '
+    '"personality": "Relentless.", "voice": "Clipped.", "backstory": "Ex-detective.", '
+    '"headshot_prompt": "Create a headshot of Jane.", '
+    '"contact_sheet_prompt": "Create a contact sheet of Jane.", '
+    '"wardrobe_prompt": "Create a wardrobe shot of Jane."}, '
+    '{"name": "Narrator", "role": "Narrator (V.O.)", '
+    '"appearance": "Voice-only presence, no physical form.", '
+    '"personality": "Authoritative.", "voice": "Deep baritone.", "backstory": "N/A.", '
+    '"headshot_prompt": "n/a", "contact_sheet_prompt": "n/a", "wardrobe_prompt": "n/a"}, '
+    '{"name": "Dr. Loyo", "role": "Historian / Principal Interview Subject", '
+    '"appearance": "Archival researcher in a cardigan.", '
+    '"personality": "Rigorous.", "voice": "Measured.", "backstory": "Professor.", '
+    '"headshot_prompt": "n/a", "contact_sheet_prompt": "n/a", "wardrobe_prompt": "n/a"}]'
+)
+
+
+def test_character_bible_node_filters_out_narrator_and_historian_roles():
+    llm = FakeChatModel(responses=[_CHARACTER_WITH_NARRATOR_AND_HISTORIAN_JSON])
+    node = make_character_bible_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert "Jane" in result["character_bible"]
+    assert "Narrator" not in result["character_bible"]
+    assert "Dr. Loyo" not in result["character_bible"]
+    assert result["character_names"] == ["Jane", "Narrator", "Dr. Loyo"]
+
+
+def test_character_bible_node_system_prompt_excludes_documentary_apparatus():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_CHARACTER_JSON])
+    node = make_character_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "historian" in system_content
+    assert "interview subject" in system_content
+
+
 def test_character_bible_node_system_prompt_requires_white_background_wardrobe():
     captured_messages = []
 
@@ -372,6 +434,76 @@ def test_location_bible_node_empty_on_unparseable_response():
     node = make_location_bible_node(llm=llm)
     result = node(_state(draft="draft text"))
     assert result["location_bible"] == "# Location Bible\n\nNo locations identified.\n"
+
+
+_LOCATION_WITH_CHARACTER_JSON = (
+    '[{"name": "Office", "description": "A cramped detective office.", '
+    '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}, '
+    '{"name": "Pancho Villa", "description": "A revolutionary general on horseback.", '
+    '"mood": "Triumphant.", "t2i_prompt": "Create a portrait of Pancho Villa."}]'
+)
+
+
+def test_location_bible_node_filters_out_entries_matching_character_names():
+    llm = FakeChatModel(responses=[_LOCATION_WITH_CHARACTER_JSON])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="draft text", character_names=["Pancho Villa"]))
+    assert "Office" in result["location_bible"]
+    assert "Pancho Villa" not in result["location_bible"]
+
+
+def test_location_bible_node_filters_character_names_case_insensitively():
+    llm = FakeChatModel(responses=[_LOCATION_WITH_CHARACTER_JSON])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="draft text", character_names=["pancho villa"]))
+    assert "Pancho Villa" not in result["location_bible"]
+
+
+_LOCATION_WITH_BACKDROP_JSON = (
+    '[{"name": "Office", "description": "A cramped detective office.", '
+    '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}, '
+    '{"name": "Studio Backdrop", "description": "A plain, seamless white studio '
+    'background used for reference shots.", '
+    '"mood": "Neutral.", "t2i_prompt": "Create a seamless white studio backdrop."}]'
+)
+
+
+def test_location_bible_node_filters_out_studio_backdrop_entries():
+    llm = FakeChatModel(responses=[_LOCATION_WITH_BACKDROP_JSON])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert "Office" in result["location_bible"]
+    assert "Studio Backdrop" not in result["location_bible"]
+
+
+def test_location_bible_node_system_prompt_excludes_studio_backdrop():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_LOCATION_JSON])
+    node = make_location_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "studio background" in system_content
+
+
+def test_location_bible_node_system_prompt_excludes_people():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_LOCATION_JSON])
+    node = make_location_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "never a person" in system_content
 
 
 def test_location_bible_node_system_prompt_excludes_off_screen_locations():
@@ -418,6 +550,32 @@ def test_bible_reviewer_node_falls_back_gracefully_on_unparseable_response():
     assert "bible_revision_count" not in result
 
 
+def test_bible_reviewer_node_system_prompt_requires_full_length_t2i_prompts():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(
+        responses=[
+            '{"score": 9.0, "passed": true, "critique": "Consistent.", "actionable_revisions": []}'
+        ]
+    )
+    node = make_bible_reviewer_node(llm=llm)
+    node(
+        _state(
+            draft="draft text",
+            character_bible="# Character Bible\n",
+            location_bible="# Location Bible\n",
+            bible_revision_count=0,
+        )
+    )
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "150-250 word" in system_content
+
+
 def test_finalize_node_short_film_produces_fountain_and_markdown():
     llm = FakeChatModel(responses=["Create a moody poster of a detective by a window."])
     node = make_finalize_node(llm=llm)
@@ -431,16 +589,15 @@ def test_finalize_node_short_film_produces_fountain_and_markdown():
 
 def test_finalize_node_dual_column_skill_produces_table_and_narrator_fountain():
     draft = (
-        '[{"timecode": "0:00", "image": "Logo reveal", "description": "Logo grows.", '
+        '[{"timecode": "0:00", "first_frame_image": "Logo reveal", '
+        '"description": "Logo grows.", '
         '"narration": "Sting plays", "technical": "Slow zoom in"}]'
     )
     llm = FakeChatModel(responses=["Create a minimalist poster with a bold logo."])
     node = make_finalize_node(llm=llm)
     result = node(_state(skill="commercial", draft=draft))
-    assert (
-        "| 0:00 | Logo reveal | Logo grows. | Sting plays | Slow zoom in |"
-        in (result["screenplay_markdown"])
-    )
+    assert "| 0:00 | Logo grows. | Sting plays | Slow zoom in |" in result["screenplay_markdown"]
+    assert "Logo reveal" in result["screenplay_markdown"]
     assert "NARRATOR" in result["fountain_script"]
     assert "Sting plays" in result["fountain_script"]
     assert "## Formatting Warnings" not in result["screenplay_markdown"]
@@ -451,9 +608,17 @@ def test_finalize_node_dual_column_falls_back_to_raw_draft_on_unparseable_json()
     llm = FakeChatModel(responses=["Create a minimalist poster with a bold logo."])
     node = make_finalize_node(llm=llm)
     result = node(_state(skill="commercial", draft=draft))
-    assert "Could not parse the draft as structured A/V beats" in result["screenplay_markdown"]
+    assert "could not parse the draft as structured A/V beats" in result["screenplay_markdown"]
     assert "not valid json" in result["screenplay_markdown"]
     assert result["fountain_script"] != ""
+
+
+def test_finalize_node_dual_column_flags_truncated_json_in_fallback_note():
+    draft = '[{"timecode": "0:00", "first_frame_image": "x", "description": "d"'
+    llm = FakeChatModel(responses=["Create a moody poster."])
+    node = make_finalize_node(llm=llm)
+    result = node(_state(skill="commercial", draft=draft))
+    assert "response looks truncated" in result["screenplay_markdown"]
 
 
 def test_finalize_node_flags_long_action_block_in_formatting_warnings():

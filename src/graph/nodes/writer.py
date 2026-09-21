@@ -10,7 +10,7 @@ from src.config import get_llm
 from src.graph.state import NodeUpdate, ScreenplayState
 from src.rag.retriever import retrieve_context
 from src.skills import get_skill
-from src.skills.base import OutputFormat
+from src.skills.base import I2V_PROMPT_GUIDELINES, T2I_PROMPT_GUIDELINES, OutputFormat
 
 
 def make_writer_node(
@@ -30,11 +30,19 @@ def make_writer_node(
         else:
             format_instruction = (
                 'Write the full script as a JSON array only: [{"timecode": str, '
-                '"image": str, "description": str, "narration": str, "technical": str}, ...] '
-                "- one object per beat. image = the single literal T2I-promptable visual "
-                "shot; description = broader scene/action context beyond that one image; "
-                "narration = spoken/V.O. audio; technical = camera, lens, transition, or "
-                "editing notes."
+                '"first_frame_image": str, "last_frame_image": str, "i2v_prompt": str, '
+                '"description": str, "narration": str, "technical": str}, ...] '
+                "- one object per beat. first_frame_image = the T2I prompt for the "
+                "shot's starting frame; last_frame_image = a T2I prompt for the "
+                "shot's ending frame, written only when the shot's visual state "
+                'changes meaningfully within its duration (leave as an empty string ""'
+                " otherwise); i2v_prompt = the image-to-video motion prompt (see I2V "
+                "PROMPT GUIDELINES below); description = broader scene/action context "
+                "beyond the T2I shots; narration = spoken/V.O. audio; technical = "
+                "camera, lens, transition, or editing notes.\n\n"
+                + T2I_PROMPT_GUIDELINES
+                + "\n\n"
+                + I2V_PROMPT_GUIDELINES
             )
 
         is_revision = bool(state["review_feedback"])

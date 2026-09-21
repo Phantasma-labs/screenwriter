@@ -13,6 +13,7 @@ from src.formatters.fountain import (
     render_fountain,
     validate_fountain,
 )
+from src.formatters.t2i import t2i_box
 from src.graph.state import NodeUpdate, ScreenplayState
 from src.rag.store import clear_store
 from src.skills import get_skill
@@ -44,10 +45,16 @@ def make_finalize_node(llm: BaseChatModel | None = None) -> Callable[[Screenplay
             beats = parse_av_beats(state["draft"])
             if not beats:
                 fountain_script = render_fountain(state["draft"])
-                body = (
-                    "**Note:** Could not parse the draft as structured A/V beats; "
-                    "showing the raw draft below.\n\n" + state["draft"]
+                stripped_draft = state["draft"].strip()
+                looks_truncated = stripped_draft.startswith("[") and not stripped_draft.endswith(
+                    "]"
                 )
+                reason = (
+                    "response looks truncated - it starts with '[' but never closes the array"
+                    if looks_truncated
+                    else "could not parse the draft as structured A/V beats"
+                )
+                body = f"**Note:** {reason}; showing the raw draft below.\n\n" + state["draft"]
             else:
                 fountain_script = render_dual_column_as_fountain(beats)
                 body = render_dual_column_table(beats)
@@ -58,7 +65,7 @@ def make_finalize_node(llm: BaseChatModel | None = None) -> Callable[[Screenplay
             if format_warnings
             else ""
         )
-        key_art_box = f"**Key Art T2I Prompt:**\n```text\n{key_art_prompt}\n```\n"
+        key_art_box = t2i_box("Key Art T2I Prompt", key_art_prompt)
         screenplay_markdown = f"{key_art_box}\n# Screenplay\n\n{body}{warnings_section}"
 
         if state.get("rag_indexed") and state.get("rag_run_id"):

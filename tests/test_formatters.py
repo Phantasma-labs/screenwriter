@@ -20,21 +20,37 @@ from src.formatters.fountain import (
     render_fountain,
     validate_fountain,
 )
+from src.formatters.t2i import t2i_box
 
 
 def test_parse_av_beats_valid_json():
     raw = (
         "Here is the script:\n"
-        '[{"timecode": "0:00-0:03", "image": "Logo reveal", "description": "Logo grows.", '
-        '"narration": "Upbeat sting", "technical": "Slow zoom in"}]'
+        '[{"timecode": "0:00-0:03", "first_frame_image": "Logo reveal", '
+        '"last_frame_image": "Logo fully formed, static.", '
+        '"i2v_prompt": "Logo grows from a single point into full reveal.", '
+        '"description": "Logo grows.", "narration": "Upbeat sting", "technical": "Slow zoom in"}]'
     )
     beats = parse_av_beats(raw)
     assert len(beats) == 1
     assert beats[0].timecode == "0:00-0:03"
-    assert beats[0].image == "Logo reveal"
+    assert beats[0].first_frame_image == "Logo reveal"
+    assert beats[0].last_frame_image == "Logo fully formed, static."
+    assert beats[0].i2v_prompt == "Logo grows from a single point into full reveal."
     assert beats[0].description == "Logo grows."
     assert beats[0].narration == "Upbeat sting"
     assert beats[0].technical == "Slow zoom in"
+
+
+def test_parse_av_beats_defaults_last_frame_and_i2v_when_omitted():
+    raw = (
+        '[{"timecode": "0:00", "first_frame_image": "A shot.", '
+        '"description": "D", "narration": "N", "technical": "T"}]'
+    )
+    beats = parse_av_beats(raw)
+    assert len(beats) == 1
+    assert beats[0].last_frame_image == ""
+    assert beats[0].i2v_prompt == ""
 
 
 def test_parse_av_beats_invalid_returns_empty():
@@ -46,10 +62,67 @@ def test_render_dual_column_table_header_only_when_empty():
 
 
 def test_render_dual_column_table_includes_rows():
-    beats = [AVBeat(timecode="0:00", image="I1", description="D1", narration="N1", technical="T1")]
+    beats = [
+        AVBeat(
+            timecode="0:00",
+            first_frame_image="I1",
+            description="D1",
+            narration="N1",
+            technical="T1",
+        )
+    ]
     table = render_dual_column_table(beats)
-    assert "| 0:00 | I1 | D1 | N1 | T1 |" in table
+    assert "| 0:00 | D1 | N1 | T1 |" in table
     assert table.startswith(TABLE_HEADER)
+
+
+def test_render_dual_column_table_includes_first_frame_and_i2v_cards():
+    beats = [
+        AVBeat(
+            timecode="0:00",
+            first_frame_image="A detailed first frame prompt.",
+            i2v_prompt="A detailed motion prompt.",
+            description="D1",
+            narration="N1",
+            technical="T1",
+        )
+    ]
+    table = render_dual_column_table(beats)
+    assert "## Beat 0:00" in table
+    assert "**First Frame T2I Prompt:**" in table
+    assert "A detailed first frame prompt." in table
+    assert "**I2V Prompt:**" in table
+    assert "A detailed motion prompt." in table
+
+
+def test_render_dual_column_table_omits_last_frame_card_when_empty():
+    beats = [
+        AVBeat(
+            timecode="0:00",
+            first_frame_image="I1",
+            description="D1",
+            narration="N1",
+            technical="T1",
+        )
+    ]
+    table = render_dual_column_table(beats)
+    assert "**Last Frame T2I Prompt:**" not in table
+
+
+def test_render_dual_column_table_includes_last_frame_card_when_present():
+    beats = [
+        AVBeat(
+            timecode="0:00",
+            first_frame_image="I1",
+            last_frame_image="The end state of the shot.",
+            description="D1",
+            narration="N1",
+            technical="T1",
+        )
+    ]
+    table = render_dual_column_table(beats)
+    assert "**Last Frame T2I Prompt:**" in table
+    assert "The end state of the shot." in table
 
 
 def test_render_fountain_uppercases_lowercase_scene_heading():
@@ -85,7 +158,7 @@ def test_render_dual_column_as_fountain_produces_narrator_cues():
     beats = [
         AVBeat(
             timecode="0:00-0:03",
-            image="Logo reveal on black.",
+            first_frame_image="Logo reveal on black.",
             description="Logo grows to fill frame.",
             narration="Upbeat sting plays.",
             technical="Slow zoom in, 50mm.",
@@ -93,8 +166,8 @@ def test_render_dual_column_as_fountain_produces_narrator_cues():
     ]
     result = render_dual_column_as_fountain(beats)
     assert "[[0:00-0:03]]" in result
-    assert "Logo reveal on black." in result
     assert "Logo grows to fill frame." in result
+    assert "Logo reveal on black." not in result
     assert "Slow zoom in, 50mm." in result
     assert "NARRATOR" in result
     assert "Upbeat sting plays." in result
@@ -166,3 +239,8 @@ def test_render_location_bible_includes_t2i_box():
     assert "**Location T2I Prompt:**" in rendered
     assert "```text" in rendered
     assert "cramped, fluorescent-lit detective office" in rendered
+
+
+def test_t2i_box_formats_label_and_fenced_prompt():
+    result = t2i_box("Headshot Prompt", "Create a portrait.")
+    assert result == "**Headshot Prompt:**\n```text\nCreate a portrait.\n```\n"

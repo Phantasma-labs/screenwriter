@@ -46,3 +46,19 @@ def test_new_initial_state_is_mutable_dict_for_langgraph_updates():
     )
     state["draft"] = "INT. ROOM - DAY\n\nShe waits.\n"
     assert state["draft"] == "INT. ROOM - DAY\n\nShe waits.\n"
+
+
+def test_new_initial_state_has_overview_discussion_defaults():
+    state = new_initial_state(
+        topic="x", skill="short_film", file_paths=[], max_revisions=2, max_bible_revisions=1
+    )
+    assert state["overview_discussion_transcript"] == []
+    assert state["overview_discussion_finished"] is False
+    assert state["overview_discussion_has_feedback"] is False
+
+
+def test_new_initial_state_has_empty_character_names_default():
+    state = new_initial_state(
+        topic="x", skill="short_film", file_paths=[], max_revisions=2, max_bible_revisions=1
+    )
+    assert state["character_names"] == []

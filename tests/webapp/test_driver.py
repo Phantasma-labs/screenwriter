@@ -1,11 +1,12 @@
 # tests/webapp/test_driver.py
 from __future__ import annotations
 
-from src.webapp.driver import run_single_pass
+from src.webapp.driver import run_single_pass, stage_for_interrupt
+from src.webapp.state_keys import STAGE_AWAITING_ANSWER, STAGE_AWAITING_OVERVIEW_FEEDBACK
 
 
 class _FakeInterrupt:
-    def __init__(self, value: str) -> None:
+    def __init__(self, value: str | dict[str, str]) -> None:
         self.value = value
 
 
@@ -63,3 +64,29 @@ def test_run_single_pass_completes_immediately_when_no_interrupt():
     assert outcome.interrupted is False
     assert outcome.node_events == ["ingest", "outliner", "writer", "reviewer", "finalize"]
     assert outcome.final_values == {"status": "finalized"}
+
+
+def test_stage_for_interrupt_returns_overview_feedback_stage_for_overview_discussion():
+    question = {"kind": "overview_discussion", "overview": "# Overview\n\nDraft."}
+    assert stage_for_interrupt(question) == STAGE_AWAITING_OVERVIEW_FEEDBACK
+
+
+def test_stage_for_interrupt_returns_answer_stage_for_interview_question():
+    assert stage_for_interrupt("What tone should this have?") == STAGE_AWAITING_ANSWER
+
+
+def test_run_single_pass_returns_interrupted_outcome_with_dict_question():
+    question_payload = {
+        "kind": "overview_discussion",
+        "overview": "# Overview\n\nDraft.",
+    }
+    app = _FakeApp(
+        [
+            {"overview": {}},
+            {"__interrupt__": (_FakeInterrupt(question_payload),)},
+        ],
+        final_values={},
+    )
+    outcome = run_single_pass(app, {"topic": "t"}, {"configurable": {"thread_id": "x"}})
+    assert outcome.interrupted is True
+    assert outcome.question == question_payload

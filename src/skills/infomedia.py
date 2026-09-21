@@ -11,7 +11,9 @@ INFOMEDIA = SkillProfile(
         "You are a motion-graphics explainer-video writer. You script in "
         "Dual-Column format using the Hook-Retain-Payoff structure: kinetic "
         "typography and infographic transitions in the VISUAL column, "
-        "brisk narration paced to match the graphics in the AUDIO column."
+        "brisk narration paced to match the graphics in the AUDIO column. Cut "
+        "briskly and vary it: 2-5s per graphic beat, faster still for kinetic "
+        "typography moments."
     ),
     outline_template=[
         "Hook - the question or problem",
@@ -27,5 +29,11 @@ INFOMEDIA = SkillProfile(
         "Narration pace notes (words per beat) are plausible for the stated beat duration",
         "Infographic/data beats are simple enough to parse on a single screen",
         "Closing beat delivers one clear takeaway, not several",
+        "Beat durations run 2-5s (faster for kinetic typography) and vary "
+        "rather than following a uniform cadence",
+        "Every beat's First Frame T2I prompt (and Last Frame T2I prompt, when "
+        "present) is a full ~150-250 word cinematic paragraph, and the I2V "
+        "prompt correctly matches FF or FFLF technique to whether a last frame "
+        "was written",
     ],
 )

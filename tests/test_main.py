@@ -31,8 +31,10 @@ class _FakeApp:
     ) -> None:
         self._batches = list(stream_batches)
         self._final_values = final_values
+        self.stream_inputs: list[object] = []
 
     def stream(self, current_input, config, stream_mode="updates"):
+        self.stream_inputs.append(current_input)
         batch = self._batches.pop(0)
         yield from batch
 
@@ -167,3 +169,28 @@ def test_run_interactive_completes_immediately_when_no_interrupt(capsys):
     )
 
     assert result == {"status": "finalized"}
+
+
+def test_run_interactive_handles_overview_discussion_interrupt(monkeypatch, capsys):
+    overview_interrupt = _FakeInterrupt(
+        {
+            "kind": "overview_discussion",
+            "overview": "# Overview\n\nDraft.",
+        }
+    )
+    batches = [
+        [{"overview": {}}, {"__interrupt__": (overview_interrupt,)}],
+        [{"character_bible": {}}, {"finalize": {}}],
+    ]
+    app = _FakeApp(batches, final_values={"status": "finalized"})
+    monkeypatch.setattr("builtins.input", lambda prompt="": "/finish")
+
+    result = run_interactive(
+        app, initial_state={"topic": "t"}, config={"configurable": {"thread_id": "x"}}
+    )
+
+    assert result == {"status": "finalized"}
+    out = capsys.readouterr().out
+    assert "# Overview" in out
+    assert "Draft." in out
+    assert app.stream_inputs[1].resume == {"feedback": "", "finish": True}

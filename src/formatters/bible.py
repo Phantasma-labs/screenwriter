@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from src.formatters.t2i import t2i_box
 from src.utils import extract_json_array
 
 
@@ -33,10 +34,6 @@ def parse_location_entries(raw: str) -> list[LocationBibleEntry]:
     return extract_json_array(raw, LocationBibleEntry)
 
 
-def _t2i_box(label: str, prompt: str) -> str:
-    return f"**{label}:**\n```text\n{prompt}\n```\n"
-
-
 def render_character_bible(entries: list[CharacterBibleEntry]) -> str:
     if not entries:
         return "# Character Bible\n\nNo principal characters identified.\n"
@@ -47,9 +44,9 @@ def render_character_bible(entries: list[CharacterBibleEntry]) -> str:
         sections.append(f"**Personality:** {entry.personality}\n")
         sections.append(f"**Voice:** {entry.voice}\n")
         sections.append(f"**Backstory:** {entry.backstory}\n")
-        sections.append(_t2i_box("Headshot Prompt", entry.headshot_prompt))
-        sections.append(_t2i_box("Contact Sheet Prompt", entry.contact_sheet_prompt))
-        sections.append(_t2i_box("Wardrobe & Accessories Prompt", entry.wardrobe_prompt))
+        sections.append(t2i_box("Headshot Prompt", entry.headshot_prompt))
+        sections.append(t2i_box("Contact Sheet Prompt", entry.contact_sheet_prompt))
+        sections.append(t2i_box("Wardrobe & Accessories Prompt", entry.wardrobe_prompt))
     return "\n".join(sections)
 
 
@@ -61,5 +58,5 @@ def render_location_bible(entries: list[LocationBibleEntry]) -> str:
         sections.append(f"## {entry.name}\n")
         sections.append(f"**Description:** {entry.description}\n")
         sections.append(f"**Mood:** {entry.mood}\n")
-        sections.append(_t2i_box("Location T2I Prompt", entry.t2i_prompt))
+        sections.append(t2i_box("Location T2I Prompt", entry.t2i_prompt))
     return "\n".join(sections)

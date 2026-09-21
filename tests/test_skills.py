@@ -4,7 +4,13 @@ from __future__ import annotations
 import pytest
 
 from src.skills import UnknownSkillError, available_skills, get_skill
-from src.skills.base import MASTER_SCENE_RULES, T2I_PROMPT_GUIDELINES, OutputFormat, SkillProfile
+from src.skills.base import (
+    I2V_PROMPT_GUIDELINES,
+    MASTER_SCENE_RULES,
+    T2I_PROMPT_GUIDELINES,
+    OutputFormat,
+    SkillProfile,
+)
 
 
 def test_master_scene_rules_mentions_scene_headings():
@@ -82,3 +88,37 @@ def test_production_skills_are_dual_column(name):
 def test_get_skill_unknown_raises():
     with pytest.raises(UnknownSkillError):
         get_skill("not_a_real_skill")
+
+
+def test_t2i_guidelines_specifies_length_target():
+    assert "150-250 words" in T2I_PROMPT_GUIDELINES
+
+
+def test_i2v_guidelines_covers_ff_and_fflf_techniques():
+    assert "FFLF" in I2V_PROMPT_GUIDELINES
+    assert "FF (First-Frame-only)" in I2V_PROMPT_GUIDELINES
+
+
+_DUAL_COLUMN_PACING = [
+    ("documentary", "2-6s"),
+    ("commercial", "1-4s"),
+    ("product_shot", "3-8s"),
+    ("learning_dev", "5-15s"),
+    ("infomedia", "2-5s"),
+]
+
+
+@pytest.mark.parametrize("name,keyword", _DUAL_COLUMN_PACING)
+def test_dual_column_skill_persona_mentions_realistic_pacing(name, keyword):
+    skill = get_skill(name)
+    assert keyword in skill.persona
+
+
+@pytest.mark.parametrize(
+    "name", ["documentary", "commercial", "product_shot", "learning_dev", "infomedia"]
+)
+def test_dual_column_skill_review_criteria_requires_t2i_i2v_richness(name):
+    skill = get_skill(name)
+    criteria_text = " ".join(skill.review_criteria)
+    assert "150-250 word" in criteria_text
+    assert "FFLF" in criteria_text

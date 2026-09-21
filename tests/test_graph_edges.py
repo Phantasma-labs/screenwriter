@@ -6,6 +6,8 @@ from src.graph.edges import (
     route_after_bible_reviewer,
     route_after_interview_ask,
     route_after_interview_wait,
+    route_after_overview,
+    route_after_overview_discussion_wait,
     route_after_reviewer,
 )
 from src.graph.state import new_initial_state
@@ -94,3 +96,26 @@ def test_route_after_bible_reviewer_revises_under_cap():
 def test_route_after_bible_reviewer_halts_at_cap():
     state = _state(bible_review_score=3.0, bible_revision_count=1, max_bible_revisions=1)
     assert route_after_bible_reviewer(state, _settings()) == "finalize"
+
+
+def test_route_after_overview_goes_to_discussion_by_default():
+    assert route_after_overview(_state(autonomous=False)) == "overview_discussion_wait"
+
+
+def test_route_after_overview_skips_discussion_when_autonomous():
+    assert route_after_overview(_state(autonomous=True)) == "character_bible"
+
+
+def test_route_after_overview_discussion_wait_revises_when_feedback_given():
+    state = _state(overview_discussion_finished=False, overview_discussion_has_feedback=True)
+    assert route_after_overview_discussion_wait(state) == "overview_revise"
+
+
+def test_route_after_overview_discussion_wait_exits_when_finished():
+    state = _state(overview_discussion_finished=True, overview_discussion_has_feedback=False)
+    assert route_after_overview_discussion_wait(state) == "character_bible"
+
+
+def test_route_after_overview_discussion_wait_reprompts_on_blank_feedback():
+    state = _state(overview_discussion_finished=False, overview_discussion_has_feedback=False)
+    assert route_after_overview_discussion_wait(state) == "overview_discussion_wait"
