@@ -459,6 +459,38 @@ def test_location_bible_node_filters_character_names_case_insensitively():
     assert "Pancho Villa" not in result["location_bible"]
 
 
+_LOCATION_WITH_BACKDROP_JSON = (
+    '[{"name": "Office", "description": "A cramped detective office.", '
+    '"mood": "Tense.", "t2i_prompt": "Create a wide shot of a cramped office."}, '
+    '{"name": "Studio Backdrop", "description": "A plain, seamless white studio '
+    'background used for reference shots.", '
+    '"mood": "Neutral.", "t2i_prompt": "Create a seamless white studio backdrop."}]'
+)
+
+
+def test_location_bible_node_filters_out_studio_backdrop_entries():
+    llm = FakeChatModel(responses=[_LOCATION_WITH_BACKDROP_JSON])
+    node = make_location_bible_node(llm=llm)
+    result = node(_state(draft="draft text"))
+    assert "Office" in result["location_bible"]
+    assert "Studio Backdrop" not in result["location_bible"]
+
+
+def test_location_bible_node_system_prompt_excludes_studio_backdrop():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_LOCATION_JSON])
+    node = make_location_bible_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "studio background" in system_content
+
+
 def test_location_bible_node_system_prompt_excludes_people():
     captured_messages = []
 
