@@ -54,7 +54,7 @@ def render_dual_column_as_fountain(beats: list[AVBeat]) -> str:
     lines: list[str] = []
     for beat in beats:
         lines.append(f"[[{beat.timecode}]]")
-        lines.append(beat.image.strip())
+        lines.append(beat.first_frame_image.strip())
         if beat.description.strip():
             lines.append(beat.description.strip())
         if beat.technical.strip():

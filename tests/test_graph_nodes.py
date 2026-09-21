@@ -528,16 +528,15 @@ def test_finalize_node_short_film_produces_fountain_and_markdown():
 
 def test_finalize_node_dual_column_skill_produces_table_and_narrator_fountain():
     draft = (
-        '[{"timecode": "0:00", "image": "Logo reveal", "description": "Logo grows.", '
+        '[{"timecode": "0:00", "first_frame_image": "Logo reveal", '
+        '"description": "Logo grows.", '
         '"narration": "Sting plays", "technical": "Slow zoom in"}]'
     )
     llm = FakeChatModel(responses=["Create a minimalist poster with a bold logo."])
     node = make_finalize_node(llm=llm)
     result = node(_state(skill="commercial", draft=draft))
-    assert (
-        "| 0:00 | Logo reveal | Logo grows. | Sting plays | Slow zoom in |"
-        in (result["screenplay_markdown"])
-    )
+    assert "| 0:00 | Logo grows. | Sting plays | Slow zoom in |" in result["screenplay_markdown"]
+    assert "Logo reveal" in result["screenplay_markdown"]
     assert "NARRATOR" in result["fountain_script"]
     assert "Sting plays" in result["fountain_script"]
     assert "## Formatting Warnings" not in result["screenplay_markdown"]
