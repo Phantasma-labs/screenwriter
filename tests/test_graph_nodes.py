@@ -191,7 +191,7 @@ def test_writer_node_uses_dual_column_instruction_for_commercial_skill():
 
     llm = _CapturingLLM(
         responses=[
-            '[{"timecode": "0:00", "image": "i", "description": "d", '
+            '[{"timecode": "0:00", "first_frame_image": "i", "description": "d", '
             '"narration": "n", "technical": "t"}]'
         ]
     )
@@ -199,6 +199,9 @@ def test_writer_node_uses_dual_column_instruction_for_commercial_skill():
     node(_state(skill="commercial", outline="1. Hook"))
     human_content = str(captured_messages[0][-1].content)
     assert "JSON array" in human_content
+    assert "first_frame_image" in human_content
+    assert "150-250 words" in human_content
+    assert "FFLF" in human_content
 
 
 def test_reviewer_node_parses_valid_json():
