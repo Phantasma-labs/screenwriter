@@ -100,15 +100,108 @@ def test_workflow_interview_pauses_for_human_input_then_resumes():
     assert "__interrupt__" in paused
     assert paused["__interrupt__"][0].value == "What tone should this have?"
 
-    resumed = app.invoke(
+    paused_at_overview = app.invoke(
         Command(resume={"answer": "Melancholy and quiet.", "autonomous": False}), config
     )
+    assert "__interrupt__" in paused_at_overview
+    assert paused_at_overview["__interrupt__"][0].value["kind"] == "overview_discussion"
+
+    resumed = app.invoke(Command(resume={"feedback": "", "finish": True}), config)
 
     assert "__interrupt__" not in resumed
     assert resumed["status"] == "finalized"
     assert resumed["interview_transcript"] == [
         {"question": "What tone should this have?", "answer": "Melancholy and quiet."}
     ]
+
+
+def test_full_workflow_autonomous_bypasses_overview_discussion():
+    responses = [
+        "1. Hook\n2. Climax",
+        "INT. ROOM - DAY\n\nA phone rings.\n",
+        '{"score": 9.0, "passed": true, "critique": "Good.", "actionable_revisions": []}',
+        '{"story_description": "A phone rings once a year.", "duration_estimate": "5 minutes", '
+        '"frame_format": "Digital, 2K", "aspect_ratio": "16:9", "camera": "Sony FX3", '
+        '"lenses": "24-70mm zoom"}',
+        "[]",
+        "[]",
+        '{"score": 9.0, "passed": true, "critique": "Fine.", "actionable_revisions": []}',
+        "Create a minimalist poster of a ringing phone in a dark room.",
+    ]
+    llm = FakeChatModel(responses=responses)
+    app = build_workflow(enable_search=False, llm=llm, search_fn=lambda q: [])
+
+    initial_state = new_initial_state(
+        topic="A phone that rings once a year",
+        skill="short_film",
+        file_paths=[],
+        max_revisions=2,
+        max_bible_revisions=1,
+        autonomous=True,
+    )
+    config = {"configurable": {"thread_id": "test-thread-autonomous-overview"}}
+    result = app.invoke(initial_state, config)
+
+    assert "__interrupt__" not in result
+    assert result["status"] == "finalized"
+    assert result["overview_discussion_transcript"] == []
+
+
+def test_workflow_overview_discussion_pauses_revises_then_finishes():
+    responses = [
+        # autonomous=False, so interview_ask always makes one LLM decision call
+        # before routing on; this response clears the interview immediately so
+        # the run proceeds straight to the outline/draft/review/overview calls
+        # the brief's response list otherwise assumes come first.
+        '{"has_enough_info": true, "question": ""}',
+        "1. Hook\n2. Climax",
+        "INT. ROOM - DAY\n\nA phone rings.\n",
+        '{"score": 9.0, "passed": true, "critique": "Good.", "actionable_revisions": []}',
+        '{"story_description": "A phone rings once a year.", "duration_estimate": "5 minutes", '
+        '"frame_format": "Digital, 2K", "aspect_ratio": "16:9", "camera": "Sony FX3", '
+        '"lenses": "24-70mm zoom"}',
+        '{"story_description": "A phone rings once a year, now darker and quieter.", '
+        '"duration_estimate": "5 minutes", "frame_format": "Digital, 2K", "aspect_ratio": "16:9", '
+        '"camera": "Sony FX3", "lenses": "24-70mm zoom"}',
+        "[]",
+        "[]",
+        '{"score": 9.0, "passed": true, "critique": "Fine.", "actionable_revisions": []}',
+        "Create a minimalist poster of a ringing phone in a dark room.",
+    ]
+    llm = FakeChatModel(responses=responses)
+    app = build_workflow(enable_search=False, llm=llm, search_fn=lambda q: [])
+
+    initial_state = new_initial_state(
+        topic="A phone that rings once a year",
+        skill="short_film",
+        file_paths=[],
+        max_revisions=2,
+        max_bible_revisions=1,
+        autonomous=False,
+    )
+    config = {"configurable": {"thread_id": "test-thread-overview-discussion"}}
+
+    paused = app.invoke(initial_state, config)
+    assert "__interrupt__" in paused
+    assert paused["__interrupt__"][0].value["kind"] == "overview_discussion"
+    assert "A phone rings once a year." in paused["__interrupt__"][0].value["overview"]
+
+    revised = app.invoke(
+        Command(resume={"feedback": "Make it darker and quieter.", "finish": False}), config
+    )
+    assert "__interrupt__" in revised
+    assert "now darker and quieter" in revised["__interrupt__"][0].value["overview"]
+
+    resumed = app.invoke(Command(resume={"feedback": "", "finish": True}), config)
+    assert "__interrupt__" not in resumed
+    assert resumed["status"] == "finalized"
+    assert resumed["overview_discussion_transcript"] == [
+        {
+            "feedback": "Make it darker and quieter.",
+            "overview_snapshot": paused["__interrupt__"][0].value["overview"],
+        }
+    ]
+    assert "now darker and quieter" in resumed["overview"]
 
 
 def test_workflow_bible_revise_loop_runs_twice_then_finalizes():
