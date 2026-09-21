@@ -38,7 +38,7 @@ keyless DuckDuckGo search automatically.
 ## Usage
 
 ```bash
-# Minimal run, autonomous (skips the interview), prints all four artifacts to stdout
+# Minimal run, autonomous (skips the interview and overview discussion), prints all four artifacts to stdout
 python main.py --topic "A retired detective solves crimes via voicemail" --skill short_film --autonomous
 
 # Interactive interview, writes four files: my_script.{fountain,md,characters.md,locations.md}
@@ -66,6 +66,12 @@ python main.py --topic "How compound interest works" --skill infomedia --output 
 During the interview phase, answer each question directly, or type `/finish`
 (or `/auto`) at any prompt to skip the rest of the interview and let the
 writer proceed autonomously with what it already knows.
+
+Once the script passes review, a non-autonomous run also pauses to show a
+pre-result overview and let you give free-form feedback before the
+character/location bibles are generated - type `/finish` there too when
+you're happy with it. Going autonomous at any point (via `--autonomous` or
+`/finish` mid-interview) skips this discussion stage as well.
 
 ## Output files
 

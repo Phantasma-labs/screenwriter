@@ -57,7 +57,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output", "-o", default=None, help="Output directory for the four generated files"
     )
     parser.add_argument("--enable-search", action="store_true")
-    parser.add_argument("--autonomous", action="store_true", help="Skip the interview entirely")
+    parser.add_argument(
+        "--autonomous",
+        action="store_true",
+        help="Skip the interview and the overview discussion entirely",
+    )
     args = parser.parse_args(argv)
 
     for file_path in args.files:

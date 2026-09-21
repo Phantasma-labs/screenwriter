@@ -34,6 +34,7 @@ def test_overview_discussion_wait_records_feedback_and_continues():
         {"feedback": "Make the tone darker.", "overview_snapshot": "# Overview\n\nOriginal text.\n"}
     ]
     assert result["overview_discussion_finished"] is False
+    assert result["overview_discussion_has_feedback"] is True
 
 
 def test_overview_discussion_wait_skips_transcript_entry_on_bare_finish():
@@ -45,6 +46,7 @@ def test_overview_discussion_wait_skips_transcript_entry_on_bare_finish():
         result = overview_discussion_wait_node(state)
     assert result["overview_discussion_transcript"] == []
     assert result["overview_discussion_finished"] is True
+    assert result["overview_discussion_has_feedback"] is False
 
 
 def test_overview_discussion_wait_passes_current_overview_to_interrupt():

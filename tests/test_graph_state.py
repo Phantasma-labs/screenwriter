@@ -54,3 +54,4 @@ def test_new_initial_state_has_overview_discussion_defaults():
     )
     assert state["overview_discussion_transcript"] == []
     assert state["overview_discussion_finished"] is False
+    assert state["overview_discussion_has_feedback"] is False

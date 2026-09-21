@@ -91,7 +91,7 @@ def _render_setup(settings: Any) -> None:
         type=sorted(ext.lstrip(".") for ext in SUPPORTED_CONTEXT_EXTENSIONS),
     )
     enable_search = st.checkbox("Enable web research")
-    autonomous = st.checkbox("Autonomous (skip the interview)")
+    autonomous = st.checkbox("Autonomous (skip the interview and overview discussion)")
     max_revisions = st.number_input("Max revisions", min_value=0, max_value=10, value=2)
 
     if st.button("Start", type="primary", disabled=not topic.strip()):

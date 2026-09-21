@@ -92,7 +92,11 @@ def build_workflow(
     graph.add_conditional_edges(
         "overview_discussion_wait",
         route_after_overview_discussion_wait,
-        {"overview_revise": "overview_revise", "character_bible": "character_bible"},
+        {
+            "overview_revise": "overview_revise",
+            "character_bible": "character_bible",
+            "overview_discussion_wait": "overview_discussion_wait",
+        },
     )
     graph.add_edge("overview_revise", "overview_discussion_wait")
     graph.add_edge("character_bible", "location_bible")

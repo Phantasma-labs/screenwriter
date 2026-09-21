@@ -38,6 +38,7 @@ def overview_discussion_wait_node(state: ScreenplayState) -> NodeUpdate:
     return {
         "overview_discussion_transcript": transcript,
         "overview_discussion_finished": finish,
+        "overview_discussion_has_feedback": bool(feedback),
     }
 
 

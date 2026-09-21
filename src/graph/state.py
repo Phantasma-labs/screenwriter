@@ -39,6 +39,7 @@ class ScreenplayState(TypedDict):
     overview: str
     overview_discussion_transcript: list[OverviewDiscussionTurn]
     overview_discussion_finished: bool
+    overview_discussion_has_feedback: bool
     character_bible: str
     location_bible: str
     bible_review_feedback: str
@@ -89,6 +90,7 @@ def new_initial_state(
         overview="",
         overview_discussion_transcript=[],
         overview_discussion_finished=False,
+        overview_discussion_has_feedback=False,
         character_bible="",
         location_bible="",
         bible_review_feedback="",

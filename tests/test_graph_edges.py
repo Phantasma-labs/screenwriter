@@ -106,11 +106,16 @@ def test_route_after_overview_skips_discussion_when_autonomous():
     assert route_after_overview(_state(autonomous=True)) == "character_bible"
 
 
-def test_route_after_overview_discussion_wait_loops_back_by_default():
-    state = _state(overview_discussion_finished=False)
+def test_route_after_overview_discussion_wait_revises_when_feedback_given():
+    state = _state(overview_discussion_finished=False, overview_discussion_has_feedback=True)
     assert route_after_overview_discussion_wait(state) == "overview_revise"
 
 
 def test_route_after_overview_discussion_wait_exits_when_finished():
-    state = _state(overview_discussion_finished=True)
+    state = _state(overview_discussion_finished=True, overview_discussion_has_feedback=False)
     assert route_after_overview_discussion_wait(state) == "character_bible"
+
+
+def test_route_after_overview_discussion_wait_reprompts_on_blank_feedback():
+    state = _state(overview_discussion_finished=False, overview_discussion_has_feedback=False)
+    assert route_after_overview_discussion_wait(state) == "overview_discussion_wait"
