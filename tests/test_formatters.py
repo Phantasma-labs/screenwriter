@@ -20,6 +20,7 @@ from src.formatters.fountain import (
     render_fountain,
     validate_fountain,
 )
+from src.formatters.t2i import t2i_box
 
 
 def test_parse_av_beats_valid_json():
@@ -166,3 +167,8 @@ def test_render_location_bible_includes_t2i_box():
     assert "**Location T2I Prompt:**" in rendered
     assert "```text" in rendered
     assert "cramped, fluorescent-lit detective office" in rendered
+
+
+def test_t2i_box_formats_label_and_fenced_prompt():
+    result = t2i_box("Headshot Prompt", "Create a portrait.")
+    assert result == "**Headshot Prompt:**\n```text\nCreate a portrait.\n```\n"
