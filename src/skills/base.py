@@ -30,6 +30,10 @@ MASTER_SCENE_RULES = """MASTER SCENE FORMAT RULES (Fountain-compatible):
 
 T2I_PROMPT_GUIDELINES = """T2I PROMPT GUIDELINES (target model: Nano Banana Pro):
 - Formula: [Subject] + [Action] + [Location/context] + [Composition] + [Style].
+- Length: a full paragraph, roughly 150-250 words (about 250 tokens) of concrete
+  descriptive detail - or as much as the shot genuinely needs to fully specify
+  subject, action, setting, composition, camera/lens, and lighting. Never a
+  single short sentence or a bare fragment.
 - Write full narrative sentences, never a bare keyword list.
 - Use positive framing only - describe what IS in frame, never "no X".
 - Open with a strong verb: "Create a...", "Generate an image of...".
@@ -41,6 +45,21 @@ T2I_PROMPT_GUIDELINES = """T2I PROMPT GUIDELINES (target model: Nano Banana Pro)
 - Consistency without reference images: reuse one fixed canonical physical-
   description clause for a character (face, hair, build, signature
   color/prop) verbatim across all of that character's prompt boxes."""
+
+I2V_PROMPT_GUIDELINES = """I2V PROMPT GUIDELINES (image-to-video motion direction):
+- Write as a cinematographer directing motion between frames: camera movement
+  (push in, pull out, pan, tilt, handheld drift, static), subject motion, and
+  pacing - not a restatement of the still image's content.
+- If last_frame_image is provided for this beat, write an FFLF (First-Frame-
+  Last-Frame) prompt: describe the transformation FROM the first frame's
+  composition TO the last frame's composition - what moves, changes, or
+  reveals itself across the shot's duration.
+- If last_frame_image is empty for this beat, write an FF (First-Frame-only)
+  prompt: describe the motion that emanates from the single starting image
+  alone - camera movement and/or subject action, without referencing an end
+  state that wasn't specified.
+- Match length and concreteness to the T2I prompt guidelines above - a full
+  paragraph of specific direction, not a one-line note."""
 
 
 @dataclass(frozen=True)
