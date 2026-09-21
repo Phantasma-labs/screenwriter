@@ -262,6 +262,22 @@ def test_overview_node_falls_back_gracefully_on_unparseable_response():
     assert "could not be parsed" in result["overview"]
 
 
+def test_overview_node_system_prompt_requests_full_synopsis():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_OVERVIEW_JSON])
+    node = make_overview_node(llm=llm)
+    node(_state(draft="draft text"))
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "synopsis" in system_content
+    assert "not a one-line logline" in system_content
+
+
 _CHARACTER_JSON = (
     '[{"name": "Jane", "role": "Protagonist", "appearance": "Sharp business attire.", '
     '"personality": "Relentless.", "voice": "Clipped.", "backstory": "Ex-detective.", '

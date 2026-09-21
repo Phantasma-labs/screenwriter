@@ -106,3 +106,29 @@ def test_overview_revise_node_returns_unchanged_overview_when_transcript_empty()
     result = node(state)
     assert result["overview"] == "# Overview\n\nOriginal text.\n"
     assert llm._call_count == 0
+
+
+def test_overview_revise_node_system_prompt_preserves_synopsis_depth():
+    captured_messages = []
+
+    class _CapturingLLM(FakeChatModel):
+        def invoke(self, messages, **kwargs):  # type: ignore[override]
+            captured_messages.append(messages)
+            return super().invoke(messages, **kwargs)
+
+    llm = _CapturingLLM(responses=[_REVISED_OVERVIEW_JSON])
+    node = make_overview_revise_node(llm=llm)
+    state = _state(
+        draft="draft text",
+        overview="# Overview\n\nOriginal text.\n",
+        overview_discussion_transcript=[
+            {
+                "feedback": "Make the tone darker.",
+                "overview_snapshot": "# Overview\n\nOriginal text.\n",
+            }
+        ],
+    )
+    node(state)
+    system_content = str(captured_messages[0][0].content).lower()
+    assert "synopsis" in system_content
+    assert "not a one-line logline" in system_content

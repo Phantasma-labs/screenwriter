@@ -14,8 +14,11 @@ from src.skills import get_skill
 
 _SYSTEM_PROMPT = (
     "You revise a production overview for a screenplay based on the user's "
-    "feedback. Keep everything from the current overview that the user did "
-    "not ask to change, and apply their feedback precisely."
+    "feedback. The story_description is a full narrative synopsis (several "
+    "paragraphs covering setup, key plot beats, and resolution), not a "
+    "one-line logline - preserve that depth unless the feedback specifically "
+    "asks to shorten it. Keep everything else from the current overview that "
+    "the user did not ask to change, and apply their feedback precisely."
 )
 
 _RESPONSE_INSTRUCTION = (
