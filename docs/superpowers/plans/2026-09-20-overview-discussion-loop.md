@@ -842,7 +842,7 @@ git commit -m "feat: add webapp stage constant for overview discussion"
 
 **Interfaces:**
 - Consumes: `STAGE_AWAITING_ANSWER`, `STAGE_AWAITING_OVERVIEW_FEEDBACK` (Task 7).
-- Produces: `stage_for_interrupt(question: object) -> str` — a pure function so `app.py` doesn't need its own branching logic embedded in a Streamlit-context-dependent function (keeps it unit-testable without `AppTest`). `StreamOutcome.question` type widens from `str | None` to `Any | None` (it was already an opaque pass-through of the interrupt value; this task is the first to actually put a non-string value there).
+- Produces: `stage_for_interrupt(question: object) -> str` — a pure function so `app.py` doesn't need its own branching logic embedded in a Streamlit-context-dependent function (keeps it unit-testable without `AppTest`). `StreamOutcome.question` type widens from `str | None` to `str | dict[str, str] | None` (it was already an opaque pass-through of the interrupt value; this task is the first to actually put a non-string value there — a real second payload shape, not "any object", so it gets a real union type per the Global Constraint against bare `Any`/unparameterized `dict` outside `NodeUpdate`).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -902,7 +902,7 @@ from src.webapp.state_keys import STAGE_AWAITING_ANSWER, STAGE_AWAITING_OVERVIEW
 @dataclass
 class StreamOutcome:
     interrupted: bool
-    question: Any | None = None
+    question: str | dict[str, str] | None = None
     node_events: list[str] = field(default_factory=list)
     final_values: ScreenplayState | None = None
 
@@ -925,7 +925,7 @@ def run_single_pass(app: Any, current_input: Any, config: dict[str, Any]) -> Str
     return StreamOutcome(interrupted=False, node_events=node_events, final_values=final_values)
 
 
-def stage_for_interrupt(question: Any) -> str:
+def stage_for_interrupt(question: object) -> str:
     if isinstance(question, dict) and question.get("kind") == "overview_discussion":
         return STAGE_AWAITING_OVERVIEW_FEEDBACK
     return STAGE_AWAITING_ANSWER
