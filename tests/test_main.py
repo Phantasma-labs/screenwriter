@@ -31,8 +31,10 @@ class _FakeApp:
     ) -> None:
         self._batches = list(stream_batches)
         self._final_values = final_values
+        self.stream_inputs: list[object] = []
 
     def stream(self, current_input, config, stream_mode="updates"):
+        self.stream_inputs.append(current_input)
         batch = self._batches.pop(0)
         yield from batch
 
@@ -191,3 +193,4 @@ def test_run_interactive_handles_overview_discussion_interrupt(monkeypatch, caps
     out = capsys.readouterr().out
     assert "# Overview" in out
     assert "Draft." in out
+    assert app.stream_inputs[1].resume == {"feedback": "", "finish": True}
