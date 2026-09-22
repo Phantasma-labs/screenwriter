@@ -1,0 +1,555 @@
+<title>Script Room</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Courier+Prime:wght@400;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root{
+    --bg:#14131a;
+    --surface:#1d1c26;
+    --surface-2:#262432;
+    --ink:#eae7f0;
+    --muted:#9b96a8;
+    --accent:#e0a458;
+    --accent-ink:#2a1d0c;
+    --page:#f6f1e4;
+    --page-ink:#2a2620;
+    --page-muted:#6b6355;
+    --rule:rgba(234,231,240,0.12);
+    --danger:#c4514a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Source Serif 4",Georgia,serif;
+    min-height:100%;
+  }
+  .shell{
+    max-width:960px;
+    margin:0 auto;
+    padding:28px 16px 60px;
+  }
+  .marquee{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    border-bottom:2px solid var(--accent);
+    padding-bottom:14px;
+    margin-bottom:20px;
+  }
+  .marquee h1{
+    font-family:"Oswald",Impact,sans-serif;
+    font-weight:600;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    font-size:clamp(22px,4vw,32px);
+    margin:0;
+    color:var(--ink);
+  }
+  .marquee h1 span{color:var(--accent);}
+  .marquee .tag{
+    font-family:"Oswald",sans-serif;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  /* dropzone */
+  .dropzone{
+    border:2px dashed var(--rule);
+    border-radius:10px;
+    background:var(--surface);
+    padding:40px 20px;
+    text-align:center;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone.drag{
+    border-color:var(--accent);
+    background:var(--surface-2);
+  }
+  .dropzone .reel{
+    font-family:"Oswald",sans-serif;
+    font-size:13px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:10px;
+  }
+  .dropzone p{
+    color:var(--muted);
+    font-size:14px;
+    margin:6px 0 18px;
+    line-height:1.6;
+  }
+  .dropzone code{
+    background:var(--surface-2);
+    color:var(--ink);
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:12.5px;
+  }
+  .pick-btn{
+    display:inline-block;
+    font-family:"Oswald",sans-serif;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    font-size:13px;
+    font-weight:600;
+    background:var(--accent);
+    color:var(--accent-ink);
+    border:none;
+    padding:11px 22px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .pick-btn:hover{filter:brightness(1.08);}
+  #fileInput{display:none;}
+  .privacy-note{
+    margin-top:14px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .err-note{
+    margin-top:14px;
+    font-size:13px;
+    color:var(--danger);
+    display:none;
+  }
+
+  /* tabs */
+  .tabbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:18px;
+  }
+  .tab{
+    font-family:"Oswald",sans-serif;
+    font-size:12.5px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    background:var(--surface);
+    color:var(--muted);
+    border:1px solid var(--rule);
+    border-bottom:none;
+    padding:10px 16px;
+    border-radius:8px 8px 0 0;
+    cursor:pointer;
+  }
+  .tab.active{
+    background:var(--surface-2);
+    color:var(--accent);
+  }
+  .tab[disabled]{
+    opacity:.35;
+    cursor:not-allowed;
+  }
+  .reload-btn{
+    font-family:"Oswald",sans-serif;
+    font-size:12px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    background:none;
+    color:var(--muted);
+    border:1px solid var(--rule);
+    padding:9px 14px;
+    border-radius:8px 8px 0 0;
+    cursor:pointer;
+    margin-left:auto;
+  }
+  .reload-btn:hover{color:var(--ink);border-color:var(--ink);}
+
+  .stage{
+    background:var(--surface-2);
+    border:1px solid var(--rule);
+    border-radius:0 8px 8px 8px;
+    padding:32px clamp(16px,4vw,48px);
+    min-height:200px;
+  }
+  .stage-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .stage-header .filename{
+    font-family:"Oswald",sans-serif;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .print-btn{
+    font-family:"Oswald",sans-serif;
+    font-size:12px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    background:none;
+    color:var(--accent);
+    border:1px solid var(--accent);
+    padding:7px 14px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .print-btn:hover{background:var(--accent);color:var(--accent-ink);}
+
+  /* prose (markdown tabs) */
+  .prose{
+    max-width:66ch;
+    margin:0 auto;
+    font-size:16px;
+    line-height:1.7;
+    color:var(--ink);
+  }
+  .prose h1,.prose h2,.prose h3{
+    font-family:"Oswald",sans-serif;
+    font-weight:600;
+    letter-spacing:0.02em;
+    color:var(--accent);
+    text-wrap:balance;
+    line-height:1.25;
+  }
+  .prose h1{font-size:26px;margin:0 0 18px;}
+  .prose h2{font-size:20px;margin:32px 0 12px;border-top:1px solid var(--rule);padding-top:20px;}
+  .prose h3{font-size:16px;margin:24px 0 8px;color:var(--ink);}
+  .prose p{margin:0 0 14px;}
+  .prose strong{color:var(--ink);}
+  .prose ul,.prose ol{padding-left:22px;margin:0 0 14px;}
+  .prose li{margin-bottom:6px;}
+  .prose blockquote{
+    margin:0 0 14px;
+    padding:2px 16px;
+    border-left:3px solid var(--accent);
+    color:var(--muted);
+    font-style:italic;
+  }
+  .prose code{
+    font-family:"Courier Prime",monospace;
+    background:var(--surface);
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:0.9em;
+  }
+  .prose pre{
+    background:var(--surface);
+    padding:14px 16px;
+    border-radius:8px;
+    overflow-x:auto;
+  }
+  .prose pre code{background:none;padding:0;}
+  .prose hr{border:none;border-top:1px solid var(--rule);margin:28px 0;}
+  .prose table{
+    border-collapse:collapse;
+    width:100%;
+    margin:0 0 18px;
+    font-size:14px;
+  }
+  .prose .table-wrap{overflow-x:auto;margin-bottom:18px;}
+  .prose th,.prose td{
+    border:1px solid var(--rule);
+    padding:8px 10px;
+    text-align:left;
+    vertical-align:top;
+  }
+  .prose th{
+    font-family:"Oswald",sans-serif;
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--accent);
+    background:var(--surface);
+  }
+  .prose img{max-width:100%;}
+
+  /* script page */
+  .page-wrap{display:flex;justify-content:center;}
+  .page{
+    background:var(--page);
+    color:var(--page-ink);
+    font-family:"Courier Prime",monospace;
+    font-size:14px;
+    line-height:1.65;
+    width:100%;
+    max-width:640px;
+    padding:48px 12% ;
+    border-radius:2px;
+    box-shadow:0 18px 40px rgba(0,0,0,0.35);
+  }
+  .fnt-blank{height:0.9em;}
+  .fnt-heading{font-weight:700;margin:14px 0 4px;}
+  .fnt-action{margin:0 0 4px;color:var(--page-ink);}
+  .fnt-cue{font-weight:700;margin:14px 0 0 28%;}
+  .fnt-paren{margin:0 0 0 22%;color:var(--page-muted);font-style:italic;}
+  .fnt-dialogue{margin:0 0 4px 12%;max-width:70%;}
+
+  .empty-tab{
+    color:var(--muted);
+    font-size:14px;
+    text-align:center;
+    padding:30px 10px;
+  }
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{
+      position:absolute;top:0;left:0;width:100%;
+      background:#fff;box-shadow:none;color:#000;
+    }
+  }
+
+  @media (max-width:520px){
+    .page{padding:36px 8%;}
+    .fnt-cue{margin-left:14%;}
+    .fnt-dialogue{margin-left:6%;max-width:90%;}
+  }
+</style>
+
+<div class="shell">
+  <div class="marquee">
+    <h1>Script <span>Room</span></h1>
+    <div class="tag">Screenwriter Agent · offline viewer</div>
+  </div>
+
+  <div id="dropzone" class="dropzone">
+    <div class="reel">Reel not loaded</div>
+    <p>
+      Drop the run's <code>output.zip</code> here — or the five loose files —<br>
+      to read <code>Overview.md</code>, <code>Script.md</code>, <code>Screenplay.md</code>,
+      <code>CharacterBible.md</code> and <code>LocationBible.md</code> as a formatted binder.
+    </p>
+    <button class="pick-btn" id="pickBtn" type="button">Choose files</button>
+    <input id="fileInput" type="file" multiple accept=".zip,.md,text/markdown,application/zip">
+    <div class="privacy-note">Everything is parsed in this browser tab. Nothing is uploaded anywhere.</div>
+    <div class="err-note" id="errNote"></div>
+  </div>
+
+  <div id="reader" style="display:none;">
+    <div class="tabbar" id="tabbar"></div>
+    <div class="stage" id="stage"></div>
+  </div>
+</div>
+
+<div id="printArea" style="display:none;"></div>
+
+<script>
+(function(){
+  const DOCS = [
+    {key:"overview",       label:"Overview",        match:"overview",       kind:"md"},
+    {key:"script",         label:"Script",          match:"script",         kind:"fountain"},
+    {key:"screenplay",     label:"Screenplay",      match:"screenplay",     kind:"md"},
+    {key:"characterbible", label:"Character Bible", match:"characterbible", kind:"md"},
+    {key:"locationbible",  label:"Location Bible",  match:"locationbible",  kind:"md"},
+  ];
+
+  const loaded = {};
+  let activeKey = null;
+
+  const dropzone = document.getElementById("dropzone");
+  const pickBtn = document.getElementById("pickBtn");
+  const fileInput = document.getElementById("fileInput");
+  const errNote = document.getElementById("errNote");
+  const reader = document.getElementById("reader");
+  const tabbar = document.getElementById("tabbar");
+  const stage = document.getElementById("stage");
+  const printArea = document.getElementById("printArea");
+
+  function normalize(name){
+    return name.toLowerCase().replace(/\.[a-z0-9]+$/,"").replace(/[^a-z]/g,"");
+  }
+
+  function showError(msg){
+    errNote.textContent = msg;
+    errNote.style.display = msg ? "block" : "none";
+  }
+
+  async function handleFiles(fileList){
+    showError("");
+    const files = Array.from(fileList);
+    if (!files.length) return;
+
+    try{
+      for (const file of files){
+        if (/\.zip$/i.test(file.name)){
+          await ingestZip(file);
+        } else if (/\.(md|txt)$/i.test(file.name) || file.type === "text/markdown"){
+          const text = await file.text();
+          ingestNamed(file.name, text);
+        }
+      }
+    }catch(err){
+      showError("Could not read that file: " + err.message);
+      return;
+    }
+
+    if (!Object.keys(loaded).length){
+      showError("No matching files found. Expected Overview.md, Script.md, Screenplay.md, CharacterBible.md or LocationBible.md — or a zip containing them.");
+      return;
+    }
+    openReader();
+  }
+
+  async function ingestZip(file){
+    const buf = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buf);
+    const entries = Object.values(zip.files).filter(e => !e.dir);
+    for (const entry of entries){
+      const base = entry.name.split("/").pop();
+      if (!/\.(md|txt)$/i.test(base)) continue;
+      const text = await entry.async("string");
+      ingestNamed(base, text);
+    }
+  }
+
+  function ingestNamed(filename, text){
+    const norm = normalize(filename);
+    const doc = DOCS.find(d => norm === d.match || norm.includes(d.match));
+    if (doc) loaded[doc.key] = {text, filename};
+  }
+
+  function openReader(){
+    dropzone.style.display = "none";
+    reader.style.display = "block";
+    renderTabs();
+    activeKey = DOCS.find(d => loaded[d.key])?.key || null;
+    renderStage();
+  }
+
+  function renderTabs(){
+    tabbar.innerHTML = "";
+    DOCS.forEach(doc => {
+      const btn = document.createElement("button");
+      btn.className = "tab" + (doc.key === activeKey ? " active" : "");
+      btn.textContent = doc.label;
+      if (!loaded[doc.key]){
+        btn.disabled = true;
+        btn.title = doc.label + ".md not loaded";
+      } else {
+        btn.addEventListener("click", () => { activeKey = doc.key; renderTabs(); renderStage(); });
+      }
+      tabbar.appendChild(btn);
+    });
+    const reload = document.createElement("button");
+    reload.className = "reload-btn";
+    reload.textContent = "Load different files";
+    reload.addEventListener("click", () => {
+      Object.keys(loaded).forEach(k => delete loaded[k]);
+      reader.style.display = "none";
+      dropzone.style.display = "block";
+      fileInput.value = "";
+    });
+    tabbar.appendChild(reload);
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  const SCENE_RE = /^(INT\.\/EXT|I\/E|INT|EXT)[.\/ ]/i;
+  function isCharacterCue(line){
+    if (!/[A-Z]/.test(line)) return false;
+    if (line.startsWith("(")) return false;
+    if (line !== line.toUpperCase()) return false;
+    return line.split(/\s+/).length <= 6;
+  }
+
+  function renderFountain(text){
+    const lines = text.split(/\r?\n/);
+    let html = "";
+    let inDialogue = false;
+    for (const raw of lines){
+      const line = raw.trim();
+      if (!line){ html += '<div class="fnt-blank"></div>'; inDialogue = false; continue; }
+      if (SCENE_RE.test(line)){
+        html += `<div class="fnt-heading">${escapeHtml(line.toUpperCase())}</div>`;
+        inDialogue = false;
+      } else if (isCharacterCue(line)){
+        html += `<div class="fnt-cue">${escapeHtml(line)}</div>`;
+        inDialogue = true;
+      } else if (line.startsWith("(")){
+        html += `<div class="fnt-paren">${escapeHtml(line)}</div>`;
+      } else if (inDialogue){
+        html += `<div class="fnt-dialogue">${escapeHtml(line)}</div>`;
+      } else {
+        html += `<div class="fnt-action">${escapeHtml(line)}</div>`;
+      }
+    }
+    return html;
+  }
+
+  function renderMarkdown(text){
+    const raw = marked.parse(text, {breaks:false});
+    const clean = DOMPurify.sanitize(raw, {ADD_ATTR:["target"]});
+    const wrap = document.createElement("div");
+    wrap.innerHTML = clean;
+    wrap.querySelectorAll("table").forEach(t => {
+      const div = document.createElement("div");
+      div.className = "table-wrap";
+      t.parentNode.insertBefore(div, t);
+      div.appendChild(t);
+    });
+    return wrap.innerHTML;
+  }
+
+  function renderStage(){
+    stage.innerHTML = "";
+    printArea.innerHTML = "";
+    if (!activeKey || !loaded[activeKey]){
+      stage.innerHTML = '<div class="empty-tab">Nothing loaded for this tab yet.</div>';
+      return;
+    }
+    const doc = DOCS.find(d => d.key === activeKey);
+    const {text, filename} = loaded[activeKey];
+
+    const header = document.createElement("div");
+    header.className = "stage-header";
+    const fn = document.createElement("div");
+    fn.className = "filename";
+    fn.textContent = filename;
+    header.appendChild(fn);
+    if (doc.kind === "fountain"){
+      const btn = document.createElement("button");
+      btn.className = "print-btn";
+      btn.textContent = "Print script";
+      btn.addEventListener("click", () => window.print());
+      header.appendChild(btn);
+    }
+    stage.appendChild(header);
+
+    if (doc.kind === "fountain"){
+      const wrap = document.createElement("div");
+      wrap.className = "page-wrap";
+      const page = document.createElement("div");
+      page.className = "page";
+      page.innerHTML = renderFountain(text);
+      wrap.appendChild(page);
+      stage.appendChild(wrap);
+      printArea.innerHTML = '<div class="page" style="box-shadow:none;max-width:none;">' + renderFountain(text) + '</div>';
+    } else {
+      const prose = document.createElement("div");
+      prose.className = "prose";
+      prose.innerHTML = renderMarkdown(text);
+      stage.appendChild(prose);
+    }
+  }
+
+  pickBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", e => handleFiles(e.target.files));
+
+  ["dragenter","dragover"].forEach(evt => {
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add("drag"); });
+  });
+  ["dragleave","drop"].forEach(evt => {
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove("drag"); });
+  });
+  dropzone.addEventListener("drop", e => {
+    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+  });
+})();
+</script>
