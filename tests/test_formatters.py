@@ -88,11 +88,46 @@ def test_render_dual_column_table_includes_first_frame_and_i2v_cards():
         )
     ]
     table = render_dual_column_table(beats)
-    assert "## Beat 0:00" in table
+    assert "## Shot 010 - Beat - 0:00" in table
     assert "**First Frame T2I Prompt:**" in table
     assert "A detailed first frame prompt." in table
     assert "**I2V Prompt:**" in table
     assert "A detailed motion prompt." in table
+
+
+def test_render_dual_column_table_numbers_shots_chronologically_in_tens():
+    beats = [
+        AVBeat(
+            timecode=tc,
+            first_frame_image="I",
+            description="D",
+            narration="N",
+            technical="T",
+        )
+        for tc in ("0:00-0:03", "0:03-0:06", "0:06-0:09")
+    ]
+    table = render_dual_column_table(beats)
+    assert "## Shot 010 - Beat - 0:00-0:03" in table
+    assert "## Shot 020 - Beat - 0:03-0:06" in table
+    assert "## Shot 030 - Beat - 0:06-0:09" in table
+    assert table.index("Shot 010") < table.index("Shot 020") < table.index("Shot 030")
+
+
+def test_render_dual_column_table_shot_numbers_stay_three_digits_past_ninety():
+    beats = [
+        AVBeat(
+            timecode=f"0:{i:02d}",
+            first_frame_image="I",
+            description="D",
+            narration="N",
+            technical="T",
+        )
+        for i in range(11)
+    ]
+    table = render_dual_column_table(beats)
+    assert "## Shot 090 - Beat - 0:08" in table
+    assert "## Shot 100 - Beat - 0:09" in table
+    assert "## Shot 110 - Beat - 0:10" in table
 
 
 def test_render_dual_column_table_omits_last_frame_card_when_empty():

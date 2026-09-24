@@ -55,7 +55,10 @@ is the image-to-video motion direction, written FFLF-style when a Last Frame
 Image is present or FF-style when it isn't; Description is broader
 scene/action context, Narration is spoken/V.O. audio, Technical is
 camera/lens/transition notes; Screenplay.md renders a compact table plus a
-per-beat card with the full T2I/I2V prompts, while Script.md maps only the
+per-beat card with the full T2I/I2V prompts (each card is headed
+`## Shot <nnn> - Beat - <timecode>`, where `<nnn>` is a chronological shot number
+assigned in code from beat order, in tens, zero-padded to three digits: 010, 020,
+030, ...), while Script.md maps only the
 First Frame Image into Fountain conventions). Each skill defines its own
 system prompt (including realistic per-format shot-pacing guidance),
 outline structure, and review checklist.

@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from src.formatters.t2i import t2i_box
 from src.utils import extract_json_array
 
+SHOT_NUMBER_STEP = 10  # shots are numbered 010, 020, 030, ... in beat order
+
 TABLE_HEADER = "| TIMECODE / BEAT | DESCRIPTION | NARRATION | TECHNICAL |\n|---|---|---|---|\n"
 
 
@@ -23,8 +25,8 @@ def parse_av_beats(raw: str) -> list[AVBeat]:
     return extract_json_array(raw, AVBeat)
 
 
-def _render_beat_card(beat: AVBeat) -> str:
-    sections = [f"## Beat {beat.timecode}\n"]
+def _render_beat_card(beat: AVBeat, shot_number: int) -> str:
+    sections = [f"## Shot {shot_number:03d} - Beat - {beat.timecode}\n"]
     sections.append(t2i_box("First Frame T2I Prompt", beat.first_frame_image))
     if beat.last_frame_image.strip():
         sections.append(t2i_box("Last Frame T2I Prompt", beat.last_frame_image))
@@ -39,5 +41,7 @@ def render_dual_column_table(beats: list[AVBeat]) -> str:
         f"| {b.timecode} | {b.description} | {b.narration} | {b.technical} |" for b in beats
     )
     table = TABLE_HEADER + rows + "\n"
-    cards = "\n".join(_render_beat_card(b) for b in beats)
+    cards = "\n".join(
+        _render_beat_card(b, shot_number=(i + 1) * SHOT_NUMBER_STEP) for i, b in enumerate(beats)
+    )
     return table + "\n" + cards
